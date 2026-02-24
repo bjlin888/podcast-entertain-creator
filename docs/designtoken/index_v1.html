@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Podcast 創作助手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────
+   Design tokens
+───────────────────────────────────── */
+:root {
+  --ink:          #0F0E0C;
+  --ink-soft:     #1C1A17;
+  --orange:       #F4631E;
+  --orange-pale:  #FFE8D6;
+  --cream:        #FDF6EC;
+  --warm-white:   #FFFBF5;
+  --teal:         #1A8F8A;
+  --teal-light:   #D8F3F1;
+  --teal-pale:    #EAF9F8;
+  --gold:         #D4A017;
+  --gold-pale:    #FFF8E0;
+  --gray-mid:     #7A7060;
+  --gray-light:   #EAE2D6;
+  --gray-pale:    #F6EFE6;
+  --shadow-card:  0 2px 20px rgba(0,0,0,.08);
+  --radius:       20px;
+  --radius-sm:    12px;
+  --radius-xs:    8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans TC',sans-serif; background:var(--cream); color:var(--ink); min-height:100vh; overflow-x:hidden; }
+
+/* ─── Top bar ─── */
+.topbar { height:62px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; position:sticky; top:0; z-index:120; transition:background .3s; }
+.topbar.dark  { background:var(--ink-soft); border-bottom:1px solid rgba(255,255,255,.07); }
+.topbar.light { background:var(--warm-white); border-bottom:2px solid var(--gray-light); box-shadow:0 2px 12px rgba(0,0,0,.04); }
+.logo { display:flex; align-items:center; gap:10px; font-weight:900; font-size:18px; cursor:pointer; text-decoration:none; transition:opacity .15s; }
+.logo:hover { opacity:.8; }
+.topbar.dark  .logo { color:#fff; }
+.topbar.light .logo { color:var(--ink); }
+.logo-icon { width:34px; height:34px; background:var(--orange); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+.flow-nav { display:flex; align-items:center; gap:5px; }
+.flow-dot { width:28px; height:28px; border-radius:50%; border:2px solid var(--gray-light); background:transparent; color:var(--gray-mid); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.flow-dot.active { border-color:var(--orange); background:var(--orange); color:#fff; }
+.flow-dot.done   { border-color:var(--teal);   background:var(--teal);   color:#fff; }
+.flow-line { width:18px; height:2px; background:var(--gray-light); border-radius:2px; }
+.flow-line.done { background:var(--teal); }
+.btn-to-dash { padding:7px 14px; background:var(--gray-pale); border:1.5px solid var(--gray-light); border-radius:var(--radius-xs); font-size:12px; font-weight:700; font-family:'Noto Sans TC',sans-serif; color:var(--gray-mid); cursor:pointer; transition:all .15s; white-space:nowrap; }
+.btn-to-dash:hover { background:var(--gray-light); color:var(--ink); }
+.btn-settings { width:36px; height:36px; border-radius:9px; background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.14); color:rgba(255,255,255,.7); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .18s; }
+.btn-settings:hover { background:rgba(255,255,255,.18); color:#fff; }
+.btn-settings.active { background:var(--teal) !important; border-color:var(--teal) !important; color:#fff !important; }
+.topbar.light .btn-settings { background:var(--gray-pale); border-color:var(--gray-light); color:var(--gray-mid); }
+.topbar.light .btn-settings:hover { background:var(--gray-light); color:var(--ink); }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+.ep-btn.eb-publish { background:linear-gradient(90deg,#4285F4,#34A0F4); color:#fff; }
+.ep-btn.eb-publish:hover { background:linear-gradient(90deg,#2B6FDB,#2090E0); box-shadow:0 3px 10px rgba(66,133,244,.3); }
+.pub-step { display:none; }
+.pub-step.on { display:block; animation:riseIn .22s ease; }
+
+/* ─── Page system ─── */
+.page    { display:none; }
+.page.on { display:block; }
+.screen  { display:none; }
+.screen.on { display:block; animation:riseIn .3s ease; }
+@keyframes riseIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+/* ─── Containers ─── */
+.dash-main { max-width:960px; margin:0 auto; padding:0 24px 80px; }
+.flow-main { max-width:760px; margin:0 auto; padding:36px 24px 120px; }
+
+/* ══════════════════════════════════════
+   DASHBOARD HERO
+══════════════════════════════════════ */
+.dash-hero {
+  background:var(--ink-soft);
+  border-radius:0 0 36px 36px;
+  padding:52px 44px 48px;
+  margin-bottom:28px;
+  position:relative;
+  overflow:hidden;
+}
+/* Radial orbs */
+.dash-hero::before {
+  content:'';
+  position:absolute; width:440px; height:440px;
+  right:-100px; top:-120px; border-radius:50%;
+  background:radial-gradient(circle,rgba(244,99,30,.24) 0%,transparent 65%);
+  pointer-events:none;
+}
+.dash-hero::after {
+  content:'';
+  position:absolute; width:280px; height:280px;
+  left:-60px; bottom:-80px; border-radius:50%;
+  background:radial-gradient(circle,rgba(26,143,138,.17) 0%,transparent 65%);
+  pointer-events:none;
+}
+.hero-deco {
+  position:absolute; right:40px; bottom:8px;
+  font-size:120px; opacity:.055;
+  transform:rotate(-14deg) scaleX(-1);
+  pointer-events:none; user-select:none; line-height:1;
+}
+.hero-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--orange); margin-bottom:16px;
+  display:flex; align-items:center; gap:8px;
+  position:relative; z-index:1;
+}
+.hero-eyebrow::before { content:''; display:inline-block; width:24px; height:2px; background:var(--orange); border-radius:2px; }
+.dash-hero h1 {
+  font-family:'Playfair Display',serif;
+  font-size:40px; font-weight:900;
+  color:#fff; line-height:1.1; margin-bottom:11px;
+  position:relative; z-index:1;
+}
+.dash-hero p { font-size:15px; color:rgba(255,255,255,.4); margin-bottom:32px; line-height:1.65; max-width:420px; position:relative; z-index:1; }
+.hero-cta-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; position:relative; z-index:1; }
+.btn-new {
+  display:inline-flex; align-items:center; gap:10px;
+  padding:14px 24px; background:var(--orange); color:#fff;
+  border:none; border-radius:var(--radius-sm);
+  font-size:15px; font-weight:700; font-family:'Noto Sans TC',sans-serif;
+  cursor:pointer; transition:all .22s;
+  box-shadow:0 4px 20px rgba(244,99,30,.42);
+}
+.btn-new:hover { background:#FF7A3A; transform:translateY(-2px); box-shadow:0 8px 30px rgba(244,99,30,.55); }
+.btn-new-icon { width:22px; height:22px; background:rgba(255,255,255,.2); border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; line-height:1; }
+.hero-shortcut { font-size:12px; color:rgba(255,255,255,.28); display:flex; align-items:center; gap:6px; }
+.hero-shortcut kbd { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:4px; padding:2px 6px; font-family:monospace; font-size:10px; color:rgba(255,255,255,.44); }
+
+/* ══════════════════════════════════════
+   STATS ROW
+══════════════════════════════════════ */
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:28px; }
+.stat-card {
+  background:var(--warm-white); border:1.5px solid var(--gray-light);
+  border-radius:var(--radius-sm); padding:18px 20px;
+  box-shadow:var(--shadow-card); transition:all .2s;
+  display:flex; align-items:center; gap:14px; overflow:hidden;
+}
+.stat-card:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(0,0,0,.11); }
+.stat-icon { width:48px; height:48px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.si-all   { background:rgba(15,14,12,.07); }
+.si-done  { background:var(--teal-pale); }
+.si-draft { background:var(--orange-pale); }
+.stat-num { font-family:'Playfair Display',serif; font-size:38px; font-weight:900; line-height:1; margin-bottom:2px; color:var(--ink); }
+.stat-num.ct { color:var(--teal); }
+.stat-num.co { color:var(--orange); }
+.stat-lbl { font-size:11px; font-weight:700; color:var(--gray-mid); letter-spacing:.05em; text-transform:uppercase; }
+
+/* ══════════════════════════════════════
+   SECTION TOOLBAR
+══════════════════════════════════════ */
+.section-toolbar { display:flex; align-items:center; gap:11px; margin-bottom:18px; flex-wrap:wrap; }
+.section-title { font-size:18px; font-weight:900; margin-right:auto; }
+.search-wrap { position:relative; flex-shrink:0; }
+.search-inp {
+  width:200px; height:36px; padding:0 14px 0 36px;
+  border:1.5px solid var(--gray-light); border-radius:99px;
+  background:var(--warm-white); font-size:13px;
+  font-family:'Noto Sans TC',sans-serif; color:var(--ink);
+  outline:none; transition:all .2s;
+}
+.search-inp:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(244,99,30,.1); width:240px; }
+.search-inp::placeholder { color:#BDB0A2; }
+.search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none; color:var(--gray-mid); }
+.sort-select {
+  height:36px; padding:0 26px 0 10px;
+  border:1.5px solid var(--gray-light); border-radius:var(--radius-xs);
+  background:var(--warm-white); font-size:12px; font-weight:700;
+  font-family:'Noto Sans TC',sans-serif; color:var(--gray-mid);
+  cursor:pointer; outline:none; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7060' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 8px center;
+  transition:border-color .15s;
+}
+.sort-select:hover { border-color:var(--orange); }
+.filter-group { display:flex; gap:6px; }
+.filter-btn {
+  padding:7px 15px; border-radius:99px;
+  font-size:12px; font-weight:700; font-family:'Noto Sans TC',sans-serif;
+  border:1.5px solid var(--gray-light); background:var(--warm-white);
+  color:var(--gray-mid); cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.filter-btn.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.filter-btn:hover:not(.on) { background:var(--gray-pale); border-color:var(--gray-mid); }
+
+/* ══════════════════════════════════════
+   EPISODE GRID
+══════════════════════════════════════ */
+.ep-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(278px,1fr)); gap:18px; }
+
+/* ─ Episode card ─ */
+.ep-card {
+  background:var(--warm-white); border:1.5px solid var(--gray-light);
+  border-radius:var(--radius); overflow:hidden;
+  box-shadow:var(--shadow-card); transition:all .24s;
+  display:flex; flex-direction:column; cursor:pointer; position:relative;
+}
+.ep-card:hover { transform:translateY(-6px); box-shadow:0 18px 48px rgba(0,0,0,.13); border-color:rgba(244,99,30,.3); }
+.ep-card:hover .ep-quick { opacity:1; transform:translateY(0); }
+.ep-card:hover .ep-cover-em { transform:scale(1.14) rotate(5deg); }
+
+/* Cover */
+.ep-cover { height:118px; display:flex; align-items:center; justify-content:center; position:relative; flex-shrink:0; overflow:hidden; }
+.ep-cover-em { font-size:48px; filter:drop-shadow(0 4px 14px rgba(0,0,0,.22)); transition:transform .3s; user-select:none; }
+.ep-num { position:absolute; top:10px; left:13px; background:rgba(0,0,0,.3); backdrop-filter:blur(6px); color:#fff; font-size:10px; font-weight:900; padding:3px 9px; border-radius:99px; letter-spacing:.07em; }
+.ep-dot { position:absolute; top:11px; right:13px; width:9px; height:9px; border-radius:50%; box-shadow:0 0 0 2px rgba(255,255,255,.35); }
+.ep-dot.done  { background:#4ADE80; }
+.ep-dot.draft { background:var(--orange); animation:dotpulse 2s ease infinite; }
+@keyframes dotpulse { 0%,100%{box-shadow:0 0 0 2px rgba(255,255,255,.35)} 50%{box-shadow:0 0 0 6px rgba(244,99,30,.18)} }
+
+/* Hover quick actions */
+.ep-quick {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(to top,rgba(0,0,0,.66),transparent);
+  display:flex; gap:6px; padding:10px 12px;
+  opacity:0; transform:translateY(8px);
+  transition:all .22s; z-index:2;
+}
+.eq-btn { padding:5px 11px; border-radius:99px; font-size:11px; font-weight:700; font-family:'Noto Sans TC',sans-serif; border:none; cursor:pointer; transition:all .15s; white-space:nowrap; backdrop-filter:blur(6px); }
+.eq-main  { background:var(--orange); color:#fff; }
+.eq-main:hover  { background:#FF7A3A; }
+.eq-ghost { background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.26); }
+.eq-ghost:hover { background:rgba(255,255,255,.3); }
+
+/* Card body */
+.ep-body { padding:16px 18px; flex:1; display:flex; flex-direction:column; }
+.ep-top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+.ep-badge { font-size:10px; font-weight:800; padding:3px 10px; border-radius:99px; letter-spacing:.04em; }
+.b-done  { background:var(--teal-light); color:var(--teal); }
+.b-draft { background:var(--orange-pale); color:var(--orange); }
+.ep-date { font-size:11px; color:var(--gray-mid); }
+.ep-title { font-size:14px; font-weight:700; color:var(--ink); line-height:1.5; margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ep-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:11px; }
+.ep-tag { font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; background:var(--gray-pale); color:var(--gray-mid); white-space:nowrap; }
+.ep-prog-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; }
+.ep-prog-lbl { font-size:10px; font-weight:700; color:var(--gray-mid); }
+.ep-prog-pct { font-size:10px; font-weight:900; }
+.ep-prog-pct.po { color:var(--orange); }
+.ep-prog-pct.pt { color:var(--teal); }
+.ep-bar-bg { background:var(--gray-light); border-radius:99px; height:5px; margin-bottom:14px; overflow:hidden; }
+.ep-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--orange),#FF8A50); transition:width .5s ease; }
+.ep-bar-fill.done { background:linear-gradient(90deg,var(--teal),#24A89F); }
+.ep-actions { display:flex; gap:8px; margin-top:auto; }
+.ep-btn { flex:1; padding:9px 0; border-radius:var(--radius-xs); font-size:12px; font-weight:700; font-family:'Noto Sans TC',sans-serif; border:none; cursor:pointer; transition:all .15s; text-align:center; }
+.eb-orange { background:var(--orange); color:#fff; }
+.eb-orange:hover { background:#FF7A3A; }
+.eb-teal   { background:var(--teal-light); color:var(--teal); }
+.eb-teal:hover   { background:var(--teal); color:#fff; }
+.eb-ghost  { background:var(--gray-pale); color:var(--gray-mid); border:1.5px solid var(--gray-light); }
+.eb-ghost:hover  { background:var(--gray-light); color:var(--ink); }
+
+/* Empty / no-results */
+.empty-wrap { text-align:center; padding:80px 24px; grid-column:1/-1; }
+.empty-wrap .ei { font-size:64px; display:block; margin-bottom:18px; }
+.empty-wrap h3  { font-size:20px; font-weight:900; margin-bottom:9px; }
+.empty-wrap p   { font-size:15px; color:var(--gray-mid); margin-bottom:26px; }
+.no-results { text-align:center; padding:52px 24px; grid-column:1/-1; color:var(--gray-mid); }
+.no-results .ni { font-size:44px; display:block; margin-bottom:12px; }
+.no-results p   { font-size:14px; }
+
+/* ══════════════════════════════════════
+   FLOW WIDGETS
+══════════════════════════════════════ */
+.prog-wrap { background:var(--gray-light); border-radius:99px; height:7px; margin-bottom:30px; overflow:hidden; }
+.prog-fill { height:100%; background:linear-gradient(90deg,var(--orange),#FF8A50); border-radius:99px; transition:width .5s cubic-bezier(.4,0,.2,1); }
+.pg-head { text-align:center; margin-bottom:36px; }
+.pg-head .big-icon { font-size:50px; display:block; margin-bottom:14px; animation:bobble 2.4s ease infinite; }
+@keyframes bobble { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+.pg-head h1  { font-size:28px; font-weight:900; line-height:1.2; margin-bottom:10px; }
+.pg-head .sub{ font-size:15px; color:var(--gray-mid); line-height:1.6; }
+
+.card { background:var(--warm-white); border-radius:var(--radius); padding:26px; border:1.5px solid var(--gray-light); box-shadow:var(--shadow-card); margin-bottom:18px; }
+.card-label { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray-mid); margin-bottom:12px; }
+.card h2 { font-size:17px; font-weight:700; margin-bottom:14px; }
+
+.inp { width:100%; padding:15px 18px; border:2px solid var(--gray-light); border-radius:var(--radius-sm); font-size:15px; font-family:'Noto Sans TC',sans-serif; color:var(--ink); background:var(--cream); outline:none; resize:none; transition:border-color .2s,box-shadow .2s; }
+.inp:focus { border-color:var(--orange); box-shadow:0 0 0 4px rgba(244,99,30,.1); background:#fff; }
+.inp::placeholder { color:#BDB0A2; }
+.char-count { text-align:right; font-size:11px; color:var(--gray-mid); margin-top:5px; }
+
+.opt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:11px; }
+.opt-btn { padding:13px 10px; border:2.5px solid var(--gray-light); border-radius:var(--radius-sm); background:#fff; cursor:pointer; text-align:center; font-family:'Noto Sans TC',sans-serif; font-size:13px; font-weight:500; color:var(--ink); display:flex; flex-direction:column; align-items:center; gap:5px; transition:all .18s; }
+.opt-btn .oi { font-size:24px; }
+.opt-btn:hover { border-color:#FF8A50; background:var(--orange-pale); transform:translateY(-2px); box-shadow:0 4px 12px rgba(244,99,30,.14); }
+.opt-btn.sel   { border-color:var(--orange); background:var(--orange-pale); color:var(--orange); font-weight:700; box-shadow:0 0 0 3px rgba(244,99,30,.14); }
+
+.btn-primary { width:100%; padding:17px 20px; background:var(--orange); color:#fff; border:none; border-radius:var(--radius-sm); font-size:17px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .2s; }
+.btn-primary:hover { background:#FF7A3A; transform:translateY(-2px); box-shadow:0 6px 20px rgba(244,99,30,.35); }
+.btn-primary:disabled { background:var(--gray-light); color:var(--gray-mid); cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-secondary { padding:11px 22px; background:transparent; color:var(--orange); border:2px solid var(--orange); border-radius:var(--radius-sm); font-size:14px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .18s; }
+.btn-secondary:hover { background:var(--orange-pale); transform:translateY(-1px); }
+.btn-teal { padding:11px 22px; background:var(--teal); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .18s; }
+.btn-teal:hover { background:#14706C; transform:translateY(-1px); box-shadow:0 4px 14px rgba(26,143,138,.3); }
+.btn-sm { padding:7px 14px; border-radius:99px; font-size:12px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; border:none; transition:all .18s; }
+.bsm-edit  { background:var(--gray-pale); color:var(--ink); }
+.bsm-edit:hover  { background:var(--gray-light); }
+.bsm-audio { background:var(--teal-light); color:var(--teal); }
+.bsm-audio:hover { background:var(--teal); color:#fff; }
+
+.tip-box { background:var(--gold-pale); border:1.5px solid #EDD58A; border-radius:var(--radius-sm); padding:13px 16px; font-size:13px; color:#7A5C00; display:flex; gap:9px; align-items:flex-start; margin-bottom:18px; }
+.divider  { border:none; border-top:1.5px solid var(--gray-light); margin:22px 0; }
+
+/* Title cards */
+.title-card { background:#fff; border:2.5px solid var(--gray-light); border-radius:var(--radius); padding:18px 20px; margin-bottom:11px; cursor:pointer; transition:all .2s; display:flex; align-items:flex-start; gap:13px; }
+.title-card:hover { border-color:#FF8A50; box-shadow:0 4px 20px rgba(244,99,30,.12); transform:translateY(-2px); }
+.title-card.sel   { border-color:var(--orange); background:var(--orange-pale); box-shadow:0 0 0 3px rgba(244,99,30,.14); }
+.tc-num { min-width:32px; height:32px; border-radius:50%; background:var(--gray-pale); color:var(--gray-mid); font-weight:900; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.title-card.sel .tc-num { background:var(--orange); color:#fff; }
+.tc-body { flex:1; }
+.tc-zh   { font-size:15px; font-weight:700; margin-bottom:4px; }
+.tc-en   { font-size:12px; color:var(--gray-mid); margin-bottom:7px; }
+.tc-hook { font-size:12px; color:var(--teal); background:var(--teal-pale); padding:3px 10px; border-radius:99px; display:inline-block; }
+
+/* Segment cards */
+.seg-card { background:#fff; border:2px solid var(--gray-light); border-radius:var(--radius); margin-bottom:13px; overflow:hidden; box-shadow:var(--shadow-card); }
+.seg-head { padding:14px 18px; background:var(--gray-pale); display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:background .15s; border-bottom:1px solid var(--gray-light); }
+.seg-head:hover { background:var(--orange-pale); }
+.seg-head-l { display:flex; align-items:center; gap:9px; }
+.seg-tag { padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; letter-spacing:.05em; }
+.t-intro { background:var(--gold-pale);  color:var(--gold); }
+.t-seg   { background:var(--teal-light); color:var(--teal); }
+.t-outro { background:var(--orange-pale);color:var(--orange); }
+.seg-name  { font-size:13px; font-weight:700; }
+.seg-dur   { font-size:11px; color:var(--gray-mid); }
+.seg-arrow { font-size:15px; color:var(--gray-mid); transition:transform .2s; }
+.seg-card.open .seg-arrow { transform:rotate(180deg); }
+.seg-body { display:none; padding:18px; }
+.seg-card.open .seg-body { display:block; animation:riseIn .2s ease; }
+.seg-text { font-size:14px; line-height:1.9; white-space:pre-wrap; margin-bottom:13px; }
+.cue-badge { display:inline-block; background:#EEF2FF; color:#5B6CF8; font-size:11px; padding:2px 7px; border-radius:5px; margin:2px; font-weight:600; }
+.seg-acts  { display:flex; gap:8px; margin-top:13px; flex-wrap:wrap; }
+
+/* Audio player */
+.audio-player { background:var(--teal-pale); border:1.5px solid var(--teal-light); border-radius:var(--radius-sm); padding:13px 16px; display:flex; align-items:center; gap:13px; margin-top:11px; }
+.audio-play-btn { width:38px; height:38px; border-radius:50%; background:var(--teal); color:#fff; border:none; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .18s; }
+.audio-play-btn:hover { background:#14706C; transform:scale(1.06); }
+.audio-info { flex:1; }
+.audio-lbl  { font-size:12px; font-weight:700; color:var(--teal); margin-bottom:4px; }
+.audio-track{ height:4px; background:var(--teal-light); border-radius:99px; overflow:hidden; }
+.audio-prog { height:100%; background:var(--teal); border-radius:99px; width:0%; transition:width .1s; }
+
+/* Stars */
+.rating-grp { margin-bottom:18px; }
+.rating-lbl { font-size:13px; font-weight:700; margin-bottom:9px; }
+.stars { display:flex; gap:7px; }
+.star-btn { font-size:26px; cursor:pointer; transition:transform .15s; background:none; border:none; line-height:1; filter:grayscale(1); opacity:.4; }
+.star-btn:hover,.star-btn.on { filter:none; opacity:1; transform:scale(1.2); }
+
+/* Bot bar */
+.bot-bar { position:fixed; bottom:0; left:0; right:0; background:var(--warm-white); border-top:2px solid var(--gray-light); padding:12px 22px; display:flex; gap:11px; align-items:center; box-shadow:0 -4px 24px rgba(0,0,0,.06); z-index:99; }
+.bot-back { padding:13px 18px; background:var(--gray-pale); color:var(--ink); border:2px solid var(--gray-light); border-radius:var(--radius-sm); font-size:15px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; white-space:nowrap; transition:all .18s; }
+.bot-back:hover { background:var(--gray-light); }
+.bot-next { flex:1; padding:15px 22px; background:var(--orange); color:#fff; border:none; border-radius:var(--radius-sm); font-size:16px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:all .2s; }
+.bot-next:hover { background:#FF7A3A; box-shadow:0 4px 16px rgba(244,99,30,.35); }
+.bot-next:disabled { background:var(--gray-light); color:var(--gray-mid); cursor:not-allowed; box-shadow:none; }
+
+/* Loading */
+.loading { display:none; position:fixed; inset:0; background:rgba(253,246,236,.93); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:18px; backdrop-filter:blur(4px); }
+.loading.on { display:flex; }
+.spin { width:52px; height:52px; border-radius:50%; border:4px solid var(--orange-pale); border-top-color:var(--orange); animation:spin .8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.load-txt { font-size:17px; font-weight:700; }
+.load-sub { font-size:13px; color:var(--gray-mid); }
+
+/* Toast */
+.toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:#fff; padding:13px 22px; border-radius:99px; font-size:14px; font-weight:600; box-shadow:0 8px 32px rgba(0,0,0,.25); z-index:300; transition:transform .33s cubic-bezier(.4,0,.2,1); white-space:nowrap; }
+.toast.on { transform:translateX(-50%) translateY(0); }
+
+/* ─── Modals ─── */
+.sheet-overlay { display:none; position:fixed; inset:0; background:rgba(15,14,12,.52); z-index:150; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px); }
+.sheet-overlay.on { display:flex; }
+.sheet { background:#fff; border-radius:26px 26px 0 0; padding:22px 22px 38px; width:100%; max-width:760px; animation:slideUp .3s cubic-bezier(.4,0,.2,1); }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.sheet-handle { width:38px; height:4px; background:var(--gray-light); border-radius:99px; margin:0 auto 20px; }
+.sheet-title  { font-size:19px; font-weight:900; margin-bottom:20px; }
+
+.ctr-overlay { display:none; position:fixed; inset:0; background:rgba(15,14,12,.55); z-index:150; align-items:center; justify-content:center; padding:22px; backdrop-filter:blur(3px); }
+.ctr-overlay.on { display:flex; }
+.ctr-box { background:#fff; border-radius:var(--radius); padding:30px 26px 26px; width:100%; max-width:580px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 80px rgba(0,0,0,.2); animation:popIn .24s cubic-bezier(.4,0,.2,1); }
+@keyframes popIn { from{transform:scale(.93);opacity:0} to{transform:scale(1);opacity:1} }
+.ctr-head  { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.ctr-title { font-size:19px; font-weight:900; }
+.ctr-close { width:34px; height:34px; border-radius:50%; background:var(--gray-pale); border:none; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--gray-mid); transition:all .15s; }
+.ctr-close:hover { background:var(--gray-light); color:var(--ink); }
+.ctr-seg-label { font-size:11px; font-weight:700; color:var(--gray-mid); text-transform:uppercase; letter-spacing:.06em; margin-bottom:9px; }
+.edit-ta { width:100%; min-height:230px; padding:15px; border:2px solid var(--gray-light); border-radius:var(--radius-sm); font-size:14px; font-family:'Noto Sans TC',sans-serif; color:var(--ink); background:var(--cream); outline:none; resize:vertical; line-height:1.8; transition:border-color .2s,box-shadow .2s; }
+.edit-ta:focus { border-color:var(--orange); box-shadow:0 0 0 4px rgba(244,99,30,.1); background:#fff; }
+.edit-hint { font-size:11px; color:var(--gray-mid); margin:7px 0 18px; }
+.ctr-acts   { display:flex; gap:9px; }
+.ctr-cancel { flex:1; padding:13px; background:var(--gray-pale); color:var(--ink); border:2px solid var(--gray-light); border-radius:var(--radius-sm); font-size:14px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .15s; }
+.ctr-cancel:hover { background:var(--gray-light); }
+.ctr-confirm{ flex:2; padding:13px; background:var(--orange); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .2s; }
+.ctr-confirm:hover { background:#FF7A3A; box-shadow:0 4px 14px rgba(244,99,30,.3); }
+.ctr-danger { flex:2; padding:13px; background:#DC2626; color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .2s; }
+.ctr-danger:hover { background:#B91C1C; }
+.del-icon  { font-size:44px; text-align:center; display:block; margin-bottom:14px; }
+.del-title { font-size:18px; font-weight:900; text-align:center; margin-bottom:9px; }
+.del-desc  { font-size:13px; color:var(--gray-mid); text-align:center; margin-bottom:22px; line-height:1.6; }
+
+.success-circle { width:92px; height:92px; border-radius:50%; background:linear-gradient(135deg,var(--teal),#24A89F); display:flex; align-items:center; justify-content:center; font-size:40px; margin:0 auto 20px; box-shadow:0 8px 32px rgba(26,143,138,.3); animation:popIn .5s cubic-bezier(.4,0,.2,1) both; }
+
+/* ══════════════════════════════════════
+   SETTINGS PAGE
+══════════════════════════════════════ */
+.pgSettings-main { max-width:760px; margin:0 auto; padding:36px 24px 80px; }
+.settings-hero {
+  background:var(--ink-soft); border-radius:var(--radius); padding:36px 40px 32px;
+  margin-bottom:28px; position:relative; overflow:hidden;
+}
+.settings-hero::before { content:''; position:absolute; width:320px; height:320px; right:-80px; top:-80px; border-radius:50%; background:radial-gradient(circle,rgba(26,143,138,.28) 0%,transparent 65%); pointer-events:none; }
+.settings-hero::after  { content:''; position:absolute; width:200px; height:200px; left:-40px; bottom:-60px; border-radius:50%; background:radial-gradient(circle,rgba(244,99,30,.18) 0%,transparent 65%); pointer-events:none; }
+.sh-deco { position:absolute; right:28px; bottom:4px; font-size:88px; opacity:.06; transform:rotate(12deg); pointer-events:none; user-select:none; }
+.settings-hero h1 { font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:#fff; margin-bottom:8px; position:relative; z-index:1; }
+.settings-hero p  { font-size:14px; color:rgba(255,255,255,.38); position:relative; z-index:1; line-height:1.6; }
+
+.settings-section { margin-bottom:10px; }
+.settings-section-title { font-size:12px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--gray-mid); margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
+.settings-section-title::after { content:''; flex:1; height:1px; background:var(--gray-light); }
+
+.set-card { background:var(--warm-white); border:1.5px solid var(--gray-light); border-radius:var(--radius); padding:24px 26px; margin-bottom:14px; box-shadow:var(--shadow-card); }
+.set-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; gap:12px; }
+.set-card-left { display:flex; align-items:center; gap:13px; }
+.platform-logo { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.pl-google { background:linear-gradient(135deg,#4285F4,#34A0F4); }
+.pl-apple  { background:linear-gradient(135deg,#fc3c44,#ff6b8a); }
+.pl-show   { background:linear-gradient(135deg,var(--orange),#FF8A50); }
+.set-card-info h3 { font-size:15px; font-weight:700; margin-bottom:3px; }
+.set-card-info p  { font-size:12px; color:var(--gray-mid); line-height:1.5; }
+
+/* Toggle switch */
+.toggle-wrap { display:flex; align-items:center; gap:9px; }
+.toggle-lbl  { font-size:12px; font-weight:700; color:var(--gray-mid); white-space:nowrap; }
+.toggle { position:relative; width:42px; height:24px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-track {
+  position:absolute; inset:0; border-radius:99px; background:var(--gray-light);
+  cursor:pointer; transition:background .2s;
+}
+.toggle input:checked + .toggle-track { background:var(--teal); }
+.toggle-track::after { content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.18); transition:transform .22s; }
+.toggle input:checked + .toggle-track::after { transform:translateX(18px); }
+
+.set-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.set-field { display:flex; flex-direction:column; gap:6px; }
+.set-field.full { grid-column:1/-1; }
+.set-lbl { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-mid); }
+.set-inp {
+  width:100%; padding:11px 14px; border:2px solid var(--gray-light); border-radius:var(--radius-xs);
+  font-size:14px; font-family:'Noto Sans TC',sans-serif; color:var(--ink);
+  background:var(--cream); outline:none; transition:border-color .2s,box-shadow .2s;
+}
+.set-inp:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(26,143,138,.12); background:#fff; }
+.set-inp::placeholder { color:#BDB0A2; }
+.set-inp.pw { font-family:monospace; letter-spacing:.1em; }
+.set-hint { font-size:11px; color:var(--gray-mid); margin-top:2px; line-height:1.5; }
+
+.set-status { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:4px 11px; border-radius:99px; }
+.ss-ok      { background:var(--teal-light); color:var(--teal); }
+.ss-pending { background:var(--orange-pale); color:var(--orange); }
+.ss-none    { background:var(--gray-pale); color:var(--gray-mid); }
+
+.set-divider { border:none; border-top:1.5px solid var(--gray-light); margin:18px 0; }
+
+.set-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap; }
+.btn-set-save {
+  padding:11px 24px; background:var(--teal); color:#fff; border:none; border-radius:var(--radius-sm);
+  font-size:13px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .18s;
+}
+.btn-set-save:hover { background:#14706C; transform:translateY(-1px); box-shadow:0 4px 14px rgba(26,143,138,.3); }
+.btn-set-test {
+  padding:11px 20px; background:transparent; color:var(--teal); border:2px solid var(--teal); border-radius:var(--radius-sm);
+  font-size:13px; font-weight:700; font-family:'Noto Sans TC',sans-serif; cursor:pointer; transition:all .18s;
+}
+.btn-set-test:hover { background:var(--teal-pale); }
+
+/* ══════════════════════════════════════
+   PUBLISH MODAL
+══════════════════════════════════════ */
+.pub-platform-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.pub-plat {
+  border:2px solid var(--gray-light); border-radius:var(--radius-sm); padding:14px 16px;
+  cursor:pointer; text-align:center; transition:all .2s; background:#fff;
+  display:flex; flex-direction:column; align-items:center; gap:7px;
+}
+.pub-plat:hover { border-color:var(--orange); background:var(--orange-pale); }
+.pub-plat.sel { border-color:var(--orange); background:var(--orange-pale); box-shadow:0 0 0 3px rgba(244,99,30,.14); }
+.pub-plat.sel .pub-plat-check { display:flex; }
+.pub-plat-icon { font-size:28px; }
+.pub-plat-name { font-size:12px; font-weight:700; }
+.pub-plat-desc { font-size:10px; color:var(--gray-mid); }
+.pub-plat-check { display:none; width:20px; height:20px; border-radius:50%; background:var(--orange); color:#fff; font-size:11px; align-items:center; justify-content:center; font-weight:700; }
+
+.pub-field-wrap { display:flex; flex-direction:column; gap:12px; margin-bottom:18px; }
+.pub-field { display:flex; flex-direction:column; gap:5px; }
+.pub-lbl { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-mid); }
+.pub-inp {
+  width:100%; padding:11px 14px; border:2px solid var(--gray-light); border-radius:var(--radius-xs);
+  font-size:14px; font-family:'Noto Sans TC',sans-serif; color:var(--ink);
+  background:var(--cream); outline:none; transition:border-color .2s,box-shadow .2s;
+}
+.pub-inp:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(244,99,30,.1); background:#fff; }
+.pub-inp::placeholder { color:#BDB0A2; }
+
+.pub-warn { background:var(--gold-pale); border:1.5px solid #EDD58A; border-radius:var(--radius-xs); padding:10px 13px; font-size:12px; color:#7A5C00; display:flex; gap:8px; align-items:flex-start; margin-bottom:16px; }
+.pub-success { text-align:center; padding:10px 0; }
+.pub-success .ps-icon { font-size:52px; display:block; margin-bottom:12px; }
+.pub-success h3 { font-size:18px; font-weight:900; margin-bottom:8px; }
+.pub-success p  { font-size:13px; color:var(--gray-mid); line-height:1.6; margin-bottom:20px; }
+.pub-links { display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+.pub-link-item {
+  display:flex; align-items:center; gap:10px; padding:11px 14px;
+  background:var(--gray-pale); border:1.5px solid var(--gray-light); border-radius:var(--radius-xs);
+  text-decoration:none; color:var(--ink); font-size:13px; font-weight:700; transition:all .15s;
+}
+.pub-link-item:hover { background:var(--gray-light); transform:translateX(3px); }
+.pub-link-plat { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+
+/* Responsive */
+@media(max-width:640px){
+  .set-field-grid { grid-template-columns:1fr; }
+  .pub-platform-row { grid-template-columns:1fr 1fr; }
+  .pgSettings-main { padding:24px 14px 80px; }
+  .settings-hero { padding:24px 20px 22px; }
+  .settings-hero h1 { font-size:22px; }
+  .topbar { padding:0 14px; }
+  .flow-nav { display:none; }
+  .dash-hero { padding:28px 20px 32px; border-radius:0 0 22px 22px; }
+  .dash-hero h1 { font-size:26px; }
+  .stats-row { gap:9px; }
+  .stat-num { font-size:28px; }
+  .stat-icon { display:none; }
+  .ep-grid { grid-template-columns:1fr; }
+  .flow-main,.dash-main { padding-left:14px; padding-right:14px; }
+  .section-toolbar { gap:8px; }
+  .search-inp { width:160px; }
+  .search-inp:focus { width:180px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<nav class="topbar dark" id="topbar">
+  <div class="logo" onclick="goToDash()">
+    <div class="logo-icon">🎙️</div>
+    Podcast 創作助手
+  </div>
+  <div class="topbar-right">
+    <div id="tbDash"></div>
+    <div id="tbFlow" style="display:none;align-items:center;gap:14px;">
+    <div class="flow-nav">
+      <div class="flow-dot" id="fd1">1</div><div class="flow-line" id="fl1"></div>
+      <div class="flow-dot" id="fd2">2</div><div class="flow-line" id="fl2"></div>
+      <div class="flow-dot" id="fd3">3</div><div class="flow-line" id="fl3"></div>
+      <div class="flow-dot" id="fd4">4</div><div class="flow-line" id="fl4"></div>
+      <div class="flow-dot" id="fd5">5</div>
+    </div>
+    <button class="btn-to-dash" onclick="goToDash()">← 我的集數</button>
+  </div>
+  <button class="btn-settings" id="btnSettings" onclick="toggleSettings()" title="系統設定">⚙️</button>
+  </div>
+</nav>
+
+<!-- Loading -->
+<div class="loading" id="loading">
+  <div class="spin"></div>
+  <div class="load-txt" id="loadTxt">AI 正在思考中…</div>
+  <div class="load-sub"  id="loadSub">通常需要 10–30 秒，請稍候</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Modal: Voice -->
+<div class="sheet-overlay" id="voiceModal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">🎧 設定示範聲音</div>
+    <div class="card-label">聲音角色</div>
+    <div class="opt-grid" style="margin-bottom:18px;">
+      <button class="opt-btn sel" onclick="selVoice(this,'female')" data-voice="female"><span class="oi">👩</span>女聲</button>
+      <button class="opt-btn"     onclick="selVoice(this,'male')"   data-voice="male">  <span class="oi">👨</span>男聲</button>
+    </div>
+    <div class="card-label">語速</div>
+    <div class="opt-grid" style="margin-bottom:18px;">
+      <button class="opt-btn"     onclick="selSpeed(this,'slow')"   data-speed="slow">  <span class="oi">🐢</span>慢速</button>
+      <button class="opt-btn sel" onclick="selSpeed(this,'normal')" data-speed="normal"><span class="oi">🚶</span>正常</button>
+      <button class="opt-btn"     onclick="selSpeed(this,'fast')"   data-speed="fast">  <span class="oi">🏃</span>快速</button>
+    </div>
+    <div class="card-label">語調</div>
+    <div class="opt-grid" style="margin-bottom:22px;">
+      <button class="opt-btn"     onclick="selPitch(this,'low')"    data-pitch="low">   <span class="oi">🔉</span>低沉</button>
+      <button class="opt-btn sel" onclick="selPitch(this,'normal')" data-pitch="normal"><span class="oi">🔊</span>正常</button>
+      <button class="opt-btn"     onclick="selPitch(this,'high')"   data-pitch="high">  <span class="oi">🎵</span>明亮</button>
+    </div>
+    <button class="btn-primary" onclick="doGenAudio()">🎙️ 開始生成示範音檔</button>
+    <button class="btn-secondary" style="width:100%;margin-top:10px;" onclick="closeModal('voiceModal')">取消</button>
+  </div>
+</div>
+
+<!-- Modal: Edit segment -->
+<div class="ctr-overlay" id="editModal">
+  <div class="ctr-box">
+    <div class="ctr-head">
+      <div class="ctr-title">✏️ 修改這段腳本</div>
+      <button class="ctr-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="ctr-seg-label" id="editLabel">段落名稱</div>
+    <textarea class="edit-ta" id="editTA" placeholder="在這裡修改腳本內容…"></textarea>
+    <div class="edit-hint">💡 可加入（停頓）、（加強語氣）等提示詞</div>
+    <div class="ctr-acts">
+      <button class="ctr-cancel"  onclick="closeModal('editModal')">取消</button>
+      <button class="ctr-confirm" onclick="saveEdit()">✅ 儲存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Delete -->
+<div class="ctr-overlay" id="delModal">
+  <div class="ctr-box" style="max-width:380px;">
+    <span class="del-icon">🗑️</span>
+    <div class="del-title">確定要刪除嗎？</div>
+    <div class="del-desc" id="delDesc">刪除後將無法復原。</div>
+    <div class="ctr-acts">
+      <button class="ctr-cancel" onclick="closeModal('delModal')">取消</button>
+      <button class="ctr-danger" onclick="confirmDel()">確定刪除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Publish -->
+<div class="ctr-overlay" id="publishModal">
+  <div class="ctr-box" style="max-width:540px;">
+    <div class="ctr-head">
+      <div class="ctr-title">📡 發布到 Podcast 平台</div>
+      <button class="ctr-close" onclick="closeModal('publishModal')">✕</button>
+    </div>
+
+    <!-- Step 1: Select platform & fill info -->
+    <div class="pub-step on" id="pubStep1">
+      <div style="font-size:13px;color:var(--gray-mid);margin-bottom:16px;">選擇要發布的平台（可多選），並確認集數資訊</div>
+
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-mid);margin-bottom:10px;">發布平台</div>
+      <div class="pub-platform-row">
+        <div class="pub-plat" id="plat-google" onclick="togglePlat('google')">
+          <div class="pub-plat-icon">🎙️</div>
+          <div class="pub-plat-name">Google Podcasts</div>
+          <div class="pub-plat-desc">透過 RSS Feed 自動同步</div>
+          <div class="pub-plat-check">✓</div>
+        </div>
+        <div class="pub-plat" id="plat-apple" onclick="togglePlat('apple')">
+          <div class="pub-plat-icon">🍎</div>
+          <div class="pub-plat-name">Apple Podcasts</div>
+          <div class="pub-plat-desc">透過 Connect API 提交</div>
+          <div class="pub-plat-check">✓</div>
+        </div>
+      </div>
+
+      <div class="pub-field-wrap">
+        <div class="pub-field">
+          <div class="pub-lbl">集數標題</div>
+          <input class="pub-inp" id="pubTitle" type="text" placeholder="輸入這集的標題…">
+        </div>
+        <div class="pub-field">
+          <div class="pub-lbl">集數摘要</div>
+          <textarea class="pub-inp" id="pubDesc" rows="3" placeholder="簡短介紹這集的主題與內容，約 100–200 字…" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="pub-field">
+            <div class="pub-lbl">集數編號</div>
+            <input class="pub-inp" id="pubEpNum" type="number" min="1" placeholder="例如：5">
+          </div>
+          <div class="pub-field">
+            <div class="pub-lbl">發布時間</div>
+            <input class="pub-inp" id="pubDate" type="date">
+          </div>
+        </div>
+        <div class="pub-field">
+          <div class="pub-lbl">音訊檔案 URL（選填）</div>
+          <input class="pub-inp" id="pubAudioUrl" type="url" placeholder="https://your-host.com/ep5.mp3">
+        </div>
+      </div>
+
+      <div class="pub-warn">⚠️ 請先在系統設定中設定平台 API 參數，否則無法完成發布。</div>
+
+      <div class="ctr-acts">
+        <button class="ctr-cancel" onclick="closeModal('publishModal')">取消</button>
+        <button class="ctr-confirm" onclick="doPublish()">📡 確認發布</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Publishing progress -->
+    <div class="pub-step" id="pubStep2">
+      <div style="text-align:center;padding:20px 0 10px;">
+        <div class="spin" style="margin:0 auto 18px;border-top-color:var(--teal);border-color:var(--teal-light);"></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;" id="pubProgTxt">正在發布中…</div>
+        <div style="font-size:13px;color:var(--gray-mid);" id="pubProgSub">連線到平台 API，請稍候</div>
+        <div style="margin-top:22px;display:flex;flex-direction:column;gap:9px;" id="pubProgList"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div class="pub-step" id="pubStep3">
+      <div class="pub-success">
+        <span class="ps-icon">🎉</span>
+        <h3>發布成功！</h3>
+        <p id="pubSuccessDesc">你的集數已成功提交到所選平台。<br>通常需要 24–72 小時審核後才會上架。</p>
+        <div class="pub-links" id="pubLinks"></div>
+        <div class="ctr-acts">
+          <button class="ctr-confirm" onclick="closeModal('publishModal')">完成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: SETTINGS ══════════════ -->
+<div class="page" id="pgSettings">
+  <div class="pgSettings-main">
+
+    <div class="settings-hero">
+      <div class="sh-deco">⚙️</div>
+      <div class="hero-eyebrow" style="color:var(--teal);">系統設定</div>
+      <h1>平台發布設定</h1>
+      <p>設定 Podcast 平台的 API 金鑰與節目資訊，讓你可以一鍵發布到 Google 和 Apple Podcasts</p>
+    </div>
+
+    <!-- ── 節目基本資訊 ── -->
+    <div class="settings-section-title">🎙️ 節目基本資訊</div>
+    <div class="set-card">
+      <div class="set-field-grid">
+        <div class="set-field full">
+          <div class="set-lbl">節目名稱</div>
+          <input class="set-inp" id="cfg-show-name" type="text" placeholder="例如：我的科技 Podcast">
+        </div>
+        <div class="set-field full">
+          <div class="set-lbl">節目描述</div>
+          <textarea class="set-inp" id="cfg-show-desc" rows="3" placeholder="簡短介紹你的節目內容、定位與目標聽眾…" style="resize:vertical;"></textarea>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">主持人姓名</div>
+          <input class="set-inp" id="cfg-author" type="text" placeholder="例如：王小明">
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">聯絡 Email</div>
+          <input class="set-inp" id="cfg-email" type="email" placeholder="your@email.com">
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">節目網站</div>
+          <input class="set-inp" id="cfg-website" type="url" placeholder="https://your-podcast.com">
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">節目類型</div>
+          <select class="set-inp" id="cfg-category">
+            <option value="">選擇類型</option>
+            <option value="technology">科技</option>
+            <option value="business">商業</option>
+            <option value="education">教育</option>
+            <option value="entertainment">娛樂</option>
+            <option value="society">社會與文化</option>
+            <option value="health">健康</option>
+          </select>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">語言</div>
+          <select class="set-inp" id="cfg-lang">
+            <option value="zh-tw">繁體中文（zh-TW）</option>
+            <option value="zh-cn">簡體中文（zh-CN）</option>
+            <option value="en">英文（en）</option>
+          </select>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">內容分級</div>
+          <select class="set-inp" id="cfg-explicit">
+            <option value="clean">普級（Clean）</option>
+            <option value="explicit">限制級（Explicit）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Google Podcasts ── -->
+    <div class="settings-section-title">🟦 Google Podcasts</div>
+    <div class="set-card">
+      <div class="set-card-header">
+        <div class="set-card-left">
+          <div class="platform-logo pl-google">🎙️</div>
+          <div class="set-card-info">
+            <h3>Google Podcasts（RSS Feed）</h3>
+            <p>Google Podcasts 透過 RSS Feed 自動索引，設定 Feed URL 後會定期同步</p>
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="cfg-google-enabled" onchange="updatePlatStatus('google')">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+      <div id="googleCfgStatus" style="margin-bottom:14px;"></div>
+      <div class="set-field-grid">
+        <div class="set-field full">
+          <div class="set-lbl">RSS Feed URL <span style="color:var(--orange)">*</span></div>
+          <input class="set-inp" id="cfg-google-rss" type="url" placeholder="https://your-host.com/feed.xml">
+          <div class="set-hint">你的節目 RSS Feed 網址，Google 會自動爬取更新。若尚未有 Feed，可使用 Anchor、Buzzsprout 等托管服務產生。</div>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">Google Search Console 驗證碼</div>
+          <input class="set-inp" id="cfg-google-verify" type="text" placeholder="google1234abcd5678efgh.html">
+          <div class="set-hint">從 Google Search Console 取得的驗證碼（選填）</div>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">自動提交間隔</div>
+          <select class="set-inp" id="cfg-google-interval">
+            <option value="auto">Google 自動索引</option>
+            <option value="manual">手動觸發</option>
+          </select>
+        </div>
+      </div>
+      <hr class="set-divider">
+      <div class="set-actions">
+        <button class="btn-set-test" onclick="testPlatform('google')">🔗 測試 Feed 連線</button>
+        <button class="btn-set-save" onclick="savePlatform('google')">💾 儲存 Google 設定</button>
+      </div>
+    </div>
+
+    <!-- ── Apple Podcasts ── -->
+    <div class="settings-section-title">🍎 Apple Podcasts</div>
+    <div class="set-card">
+      <div class="set-card-header">
+        <div class="set-card-left">
+          <div class="platform-logo pl-apple">🍎</div>
+          <div class="set-card-info">
+            <h3>Apple Podcasts Connect</h3>
+            <p>透過 Apple Podcasts Connect API 直接提交集數，需要 Apple Developer 帳號</p>
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="cfg-apple-enabled" onchange="updatePlatStatus('apple')">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+      <div id="appleCfgStatus" style="margin-bottom:14px;"></div>
+      <div class="set-field-grid">
+        <div class="set-field">
+          <div class="set-lbl">Apple ID（開發者帳號）</div>
+          <input class="set-inp" id="cfg-apple-id" type="email" placeholder="developer@apple.com">
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">Apple Podcasts Provider ID</div>
+          <input class="set-inp" id="cfg-apple-provider-id" type="text" placeholder="例如：12345678">
+          <div class="set-hint">在 Apple Podcasts Connect 後台取得</div>
+        </div>
+        <div class="set-field full">
+          <div class="set-lbl">API Key（Private Key）<span style="color:var(--orange)">*</span></div>
+          <input class="set-inp pw" id="cfg-apple-key" type="password" placeholder="貼上 .p8 檔案內容或 API Key">
+          <div class="set-hint">從 Apple Developer → Certificates, IDs & Profiles → Keys 產生的 AuthKey_XXXXXX.p8 金鑰內容</div>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">Key ID</div>
+          <input class="set-inp" id="cfg-apple-key-id" type="text" placeholder="例如：ABC123DEFG">
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">Team ID</div>
+          <input class="set-inp" id="cfg-apple-team-id" type="text" placeholder="例如：ABC123DEFG">
+        </div>
+        <div class="set-field full">
+          <div class="set-lbl">RSS Feed URL（同時供 Apple 索引）</div>
+          <input class="set-inp" id="cfg-apple-rss" type="url" placeholder="https://your-host.com/feed.xml">
+        </div>
+      </div>
+      <hr class="set-divider">
+      <div class="set-actions">
+        <button class="btn-set-test" onclick="testPlatform('apple')">🔑 驗證 API 連線</button>
+        <button class="btn-set-save" onclick="savePlatform('apple')">💾 儲存 Apple 設定</button>
+      </div>
+    </div>
+
+    <!-- ── AI / LLM 設定 ── -->
+    <div class="settings-section-title">🤖 AI 模型設定</div>
+    <div class="set-card">
+      <div class="set-field-grid">
+        <div class="set-field">
+          <div class="set-lbl">LLM 提供者</div>
+          <select class="set-inp" id="cfg-llm-provider" onchange="updateLLMFields()">
+            <option value="claude">Anthropic Claude</option>
+            <option value="gemini">Google Gemini</option>
+          </select>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">模型版本</div>
+          <select class="set-inp" id="cfg-llm-model">
+            <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+            <option value="claude-opus-4-6">claude-opus-4-6</option>
+          </select>
+        </div>
+        <div class="set-field full">
+          <div class="set-lbl">API Key</div>
+          <input class="set-inp pw" id="cfg-llm-key" type="password" placeholder="sk-ant-…">
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">TTS 提供者</div>
+          <select class="set-inp" id="cfg-tts-provider">
+            <option value="google">Google Cloud TTS</option>
+            <option value="elevenlabs">ElevenLabs</option>
+          </select>
+        </div>
+        <div class="set-field">
+          <div class="set-lbl">TTS API Key</div>
+          <input class="set-inp pw" id="cfg-tts-key" type="password" placeholder="Google Cloud / ElevenLabs API Key">
+        </div>
+      </div>
+      <hr class="set-divider">
+      <div class="set-actions">
+        <button class="btn-set-save" onclick="saveAllSettings()">💾 儲存所有設定</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: DASHBOARD ══════════════ -->
+<div class="page on" id="pgDash">
+  <div class="dash-main">
+
+    <div class="dash-hero">
+      <div class="hero-deco">🎙</div>
+      <div class="hero-eyebrow">我的工作室</div>
+      <h1>我的 Podcast 集數</h1>
+      <p>管理所有進行中和已完成的集數，繼續製作或開始全新一集</p>
+      <div class="hero-cta-row">
+        <button class="btn-new" id="btnNewEp" onclick="newEp()">
+          <span class="btn-new-icon">＋</span>
+          建立新的一集
+        </button>
+        <span class="hero-shortcut">快速新增 <kbd>N</kbd></span>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon si-all">🎙️</div>
+        <div>
+          <div class="stat-num" id="stTotal">0</div>
+          <div class="stat-lbl">全部集數</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-done">✅</div>
+        <div>
+          <div class="stat-num ct" id="stDone">0</div>
+          <div class="stat-lbl">已完成</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-draft">✏️</div>
+        <div>
+          <div class="stat-num co" id="stDraft">0</div>
+          <div class="stat-lbl">進行中</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-toolbar">
+      <div class="section-title">所有集數</div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-inp" id="searchInp" type="search"
+          placeholder="搜尋標題或主題…" oninput="renderGrid()" autocomplete="off">
+      </div>
+      <select class="sort-select" id="sortSel" onchange="renderGrid()">
+        <option value="newest">最新優先</option>
+        <option value="oldest">最舊優先</option>
+        <option value="done">已完成優先</option>
+        <option value="draft">進行中優先</option>
+      </select>
+      <div class="filter-group">
+        <button class="filter-btn on" onclick="setFilter('all',this)">全部</button>
+        <button class="filter-btn"    onclick="setFilter('draft',this)">進行中</button>
+        <button class="filter-btn"    onclick="setFilter('done',this)">已完成</button>
+      </div>
+    </div>
+
+    <div class="ep-grid" id="epGrid"></div>
+
+  </div>
+</div>
+
+<!-- ══════════════ PAGE: FLOW ══════════════ -->
+<div class="page" id="pgFlow">
+  <div class="flow-main">
+
+    <!-- S1 -->
+    <div class="screen" id="s1">
+      <div class="prog-wrap"><div class="prog-fill" style="width:20%"></div></div>
+      <div class="pg-head">
+        <span class="big-icon" style="animation:none;">📝</span>
+        <h1>這集要聊什麼？</h1>
+        <p class="sub">告訴我你的主題，越具體越好</p>
+      </div>
+      <div class="card">
+        <div class="card-label">📌 主題描述 <span style="color:var(--orange)">*</span></div>
+        <textarea class="inp" id="topicInp" rows="3"
+          placeholder="例如：分享我這個月用 AI 工具的真實心得，哪些好用、哪些踩雷…"
+          oninput="updateCC(this,'topicCC',200)" maxlength="200"></textarea>
+        <div class="char-count"><span id="topicCC">0</span> / 200</div>
+      </div>
+      <div class="card">
+        <div class="card-label">👥 給誰聽？</div>
+        <div class="opt-grid">
+          <button class="opt-btn" onclick="toggleOpt(this)"><span class="oi">🎓</span>學生族</button>
+          <button class="opt-btn" onclick="toggleOpt(this)"><span class="oi">💼</span>上班族</button>
+          <button class="opt-btn" onclick="toggleOpt(this)"><span class="oi">🏠</span>家長</button>
+          <button class="opt-btn" onclick="toggleOpt(this)"><span class="oi">🚀</span>創業者</button>
+          <button class="opt-btn" onclick="toggleOpt(this)"><span class="oi">🌍</span>所有人</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">⏱️ 時長</div>
+        <div class="opt-grid">
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">☕</span>15 分<br><small style="color:var(--gray-mid)">短聊</small></button>
+          <button class="opt-btn sel" onclick="selOne(this)"><span class="oi">🎯</span>30 分<br><small style="color:var(--gray-mid)">標準</small></button>
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">🔭</span>60 分<br><small style="color:var(--gray-mid)">深入</small></button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">🎭 風格</div>
+        <div class="opt-grid">
+          <button class="opt-btn sel" onclick="selOne(this)"><span class="oi">😄</span>輕鬆聊天</button>
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">🔬</span>深度探討</button>
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">📚</span>知識教學</button>
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">🎉</span>娛樂故事</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">🎙️ 主持人</div>
+        <div class="opt-grid">
+          <button class="opt-btn sel" onclick="selOne(this)"><span class="oi">🧑</span>我一人</button>
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">👫</span>兩人共主持</button>
+          <button class="opt-btn"     onclick="selOne(this)"><span class="oi">🎤</span>有來賓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- S2 -->
+    <div class="screen" id="s2">
+      <div class="prog-wrap"><div class="prog-fill" style="width:40%"></div></div>
+      <div class="pg-head">
+        <span class="big-icon" style="animation:none;">✨</span>
+        <h1>選一個你最喜歡的標題</h1>
+        <p class="sub">AI 幫你想了 5 個，選一個最對味的</p>
+      </div>
+      <div id="titleList"></div>
+      <button class="btn-secondary" style="width:100%;margin-top:6px;" onclick="regenTitles()">🔄 換 5 個新標題</button>
+    </div>
+
+    <!-- S3 -->
+    <div class="screen" id="s3">
+      <div class="prog-wrap"><div class="prog-fill" style="width:60%"></div></div>
+      <div class="pg-head">
+        <span class="big-icon" style="animation:none;">📄</span>
+        <h1>你的完整腳本來了！</h1>
+        <p class="sub">點開每個段落，可以個別試聽或修改</p>
+      </div>
+      <div class="tip-box">💡 <span>點「🔊 試聽」聽 AI 示範語氣，點「✏️ 修改」告訴我哪裡需要調整</span></div>
+      <div id="segList"></div>
+    </div>
+
+    <!-- S4 -->
+    <div class="screen" id="s4">
+      <div class="prog-wrap"><div class="prog-fill" style="width:80%"></div></div>
+      <div class="pg-head">
+        <span class="big-icon" style="animation:none;">⭐</span>
+        <h1>這個腳本好用嗎？</h1>
+        <p class="sub">告訴我哪裡需要調整，AI 馬上幫你優化</p>
+      </div>
+      <div class="card">
+        <h2>幫腳本打個分數</h2>
+        <div class="rating-grp">
+          <div class="rating-lbl">說話聽起來自然嗎？</div>
+          <div class="stars" id="st1">
+            <button class="star-btn" onclick="setRating('st1',1)">⭐</button><button class="star-btn" onclick="setRating('st1',2)">⭐</button>
+            <button class="star-btn" onclick="setRating('st1',3)">⭐</button><button class="star-btn" onclick="setRating('st1',4)">⭐</button>
+            <button class="star-btn" onclick="setRating('st1',5)">⭐</button>
+          </div>
+        </div>
+        <div class="rating-grp">
+          <div class="rating-lbl">節奏快慢合適嗎？</div>
+          <div class="stars" id="st2">
+            <button class="star-btn" onclick="setRating('st2',1)">⭐</button><button class="star-btn" onclick="setRating('st2',2)">⭐</button>
+            <button class="star-btn" onclick="setRating('st2',3)">⭐</button><button class="star-btn" onclick="setRating('st2',4)">⭐</button>
+            <button class="star-btn" onclick="setRating('st2',5)">⭐</button>
+          </div>
+        </div>
+        <div class="rating-grp">
+          <div class="rating-lbl">符合你的說話風格？</div>
+          <div class="stars" id="st3">
+            <button class="star-btn" onclick="setRating('st3',1)">⭐</button><button class="star-btn" onclick="setRating('st3',2)">⭐</button>
+            <button class="star-btn" onclick="setRating('st3',3)">⭐</button><button class="star-btn" onclick="setRating('st3',4)">⭐</button>
+            <button class="star-btn" onclick="setRating('st3',5)">⭐</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>有什麼想調整的？</h2>
+        <textarea class="inp" id="fbInp" rows="4" placeholder="例如：開場太正式，希望更輕鬆一點&#10;第二段內容太少，可以多說一些…"></textarea>
+        <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-sm bsm-edit" onclick="addTag('語氣太正式')">語氣太正式</button>
+          <button class="btn-sm bsm-edit" onclick="addTag('內容太少')">內容太少</button>
+          <button class="btn-sm bsm-edit" onclick="addTag('開場太無聊')">開場太無聊</button>
+          <button class="btn-sm bsm-edit" onclick="addTag('結尾不夠有力')">結尾不夠有力</button>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="submitFb()">🚀 重新優化腳本</button>
+      <button class="btn-secondary" style="width:100%;margin-top:11px;" onclick="doExport()">✅ 滿意了，去下載腳本</button>
+    </div>
+
+    <!-- S5 -->
+    <div class="screen" id="s5">
+      <div class="prog-wrap"><div class="prog-fill" style="width:100%"></div></div>
+      <div style="text-align:center;padding-top:20px;">
+        <div class="success-circle">🎉</div>
+        <h1 style="font-size:26px;font-weight:900;margin-bottom:9px;">腳本完成！</h1>
+        <p style="color:var(--gray-mid);font-size:14px;margin-bottom:26px;">你的 Podcast 腳本已經準備好了，準備開錄吧！</p>
+      </div>
+      <div class="card">
+        <div class="card-label">📋 完整腳本</div>
+        <div id="finalTxt" style="font-size:13px;line-height:1.9;white-space:pre-wrap;max-height:320px;overflow-y:auto;padding:6px 0;"></div>
+        <div class="divider"></div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;">
+          <button class="btn-teal" onclick="copyScript()">📋 複製全文</button>
+          <button class="btn-teal" onclick="dlScript()">⬇️ 下載 .txt</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:11px;flex-wrap:wrap;">
+        <button class="btn-secondary" style="flex:1;" onclick="goToDash()">← 回集數列表</button>
+        <button class="btn-secondary" style="flex:1;" onclick="newEp()">＋ 新增一集</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bot-bar" id="botBar" style="display:none;">
+  <button class="bot-back" onclick="flowBack()">← 上一步</button>
+  <button class="bot-next" onclick="flowNext()"><span id="nextTxt">下一步</span> ➜</button>
+</div>
+
+<script>
+/* ─── Demo data ─── */
+const DEMO_TITLES = [
+  { zh:'你知道 AI 其實正在幫你省下幾十個小時嗎？', en:'How AI Is Secretly Saving You Dozens of Hours', hook:'反差感強，讓人想繼續聽' },
+  { zh:'5 個我每天用的 AI 工具，用了就回不去',    en:"5 AI Tools I Use Daily and Can't Live Without", hook:'數字開頭，具體又實用' },
+  { zh:'別再說 AI 搶工作了，它其實在幫你加薪',    en:"Stop Saying AI Steals Jobs — It's Giving You Raises", hook:'顛覆常見誤解，製造好奇' },
+  { zh:'這些 AI 工具我試了一個月，老實說結果很意外', en:'I Tested These AI Tools for a Month — Honest Results', hook:'親身實測，真誠感強' },
+  { zh:'AI 時代每個人都該懂的 3 個基本觀念',      en:'3 Fundamental AI Concepts Everyone Should Know', hook:'適合所有人，降低進入門檻' },
+];
+const DEMO_SEGS = [
+  { id:'INTRO',   label:'開場白',        tag:'intro', dur:'約 30 秒',
+    content:'嗨大家好，歡迎回來我的 Podcast！\n\n（停頓）\n\n你有沒有這種感覺？身邊的人都在說 AI、用 AI，但打開了一堆工具，反而覺得更混亂？今天這集，我們就來好好說清楚。',
+    cues:['（停頓）','【BGM淡入】'] },
+  { id:'SEGMENT_1',label:'為什麼現在要聊 AI？',tag:'seg',dur:'約 5 分鐘',
+    content:'先說說我自己的故事。（加強語氣）三個月前，我一天花在整理資料上的時間超過兩個小時。但現在，同樣的事情只要 15 分鐘。\n\n這不是魔法，是找到了適合自己的 AI 工作流程。',
+    cues:['（加強語氣）','（停頓）'] },
+  { id:'SEGMENT_2',label:'5 個推薦工具介紹',    tag:'seg',dur:'約 15 分鐘',
+    content:'好，直接進入正題。第一個工具是 Claude，它是我目前最常用的 AI 助理。\n\n（停頓）\n\n為什麼選 Claude？因為它在理解中文、回覆台灣口語方面表現特別好。',
+    cues:['（停頓）'] },
+  { id:'OUTRO',   label:'結尾與行動呼籲',  tag:'outro',dur:'約 1 分鐘',
+    content:'今天跟大家分享了我最愛用的 5 個 AI 工具。希望你不只是覺得「有趣」，而是今天就去試試！\n\n（停頓）\n\n記得訂閱，我們下集見！',
+    cues:['（停頓）','（加強語氣）'] },
+];
+const COVERS = [
+  { bg:'linear-gradient(135deg,#F4631E,#FF8A50)', em:'🎯' },
+  { bg:'linear-gradient(135deg,#1A8F8A,#24A89F)', em:'🌊' },
+  { bg:'linear-gradient(135deg,#6B48FF,#A78BFA)', em:'✨' },
+  { bg:'linear-gradient(135deg,#D4A017,#F6D860)', em:'⚡' },
+  { bg:'linear-gradient(135deg,#E53E8A,#F472B6)', em:'🎵' },
+  { bg:'linear-gradient(135deg,#2D6A4F,#52B788)', em:'🌿' },
+];
+const STEP_LABELS = ['','填寫主題','挑選標題','審閱腳本','給意見','已完成'];
+
+/* ─── State ─── */
+const S = {
+  episodes:[], filter:'all', activeId:null, curScreen:1,
+  topic:'', titles:[], selTitle:-1, segments:[],
+  version:1, vc:{voice:'female',speed:'normal',pitch:'normal'},
+  voiceSeg:null, editIdx:null, delId:null,
+  ratings:{st1:0,st2:0,st3:0}, _script:'',
+};
+
+/* ─── Init ─── */
+function init() {
+  S.episodes = [
+    { id:'ep1', title:'AI 工具大解密：5 個讓你效率翻倍的神器',
+      topic:'介紹 AI 工具心得', style:'輕鬆聊天', dur:'30 分鐘',
+      status:'done', progress:100, step:5, date:'2025-02-18', ci:0,
+      titles:DEMO_TITLES, selTitle:0, segments:JSON.parse(JSON.stringify(DEMO_SEGS)) },
+    { id:'ep2', title:'聊聊台灣 Podcast 生態，現在還是好時機嗎？',
+      topic:'Taiwan Podcast 生態現況', style:'深度探討', dur:'60 分鐘',
+      status:'draft', progress:60, step:3, date:'2025-02-20', ci:1,
+      titles:[], selTitle:-1, segments:[] },
+    { id:'ep3', title:'（草稿）給新手主持人的開播指南',
+      topic:'新手 Podcast 主持人入門', style:'知識教學', dur:'30 分鐘',
+      status:'draft', progress:20, step:1, date:'2025-02-22', ci:3,
+      titles:[], selTitle:-1, segments:[] },
+  ];
+  renderDash();
+}
+
+/* ═══ DASHBOARD ═══ */
+function renderDash() {
+  const total = S.episodes.length;
+  const done  = S.episodes.filter(e=>e.status==='done').length;
+  const draft = S.episodes.filter(e=>e.status==='draft').length;
+  document.getElementById('stTotal').textContent = total;
+  document.getElementById('stDone').textContent  = done;
+  document.getElementById('stDraft').textContent = draft;
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('epGrid');
+  const q    = (document.getElementById('searchInp')?.value||'').toLowerCase().trim();
+  const sort = document.getElementById('sortSel')?.value || 'newest';
+
+  let list = [...S.episodes];
+  if (S.filter==='done')  list = list.filter(e=>e.status==='done');
+  if (S.filter==='draft') list = list.filter(e=>e.status==='draft');
+  if (q) list = list.filter(e=>
+    e.title.toLowerCase().includes(q) ||
+    (e.topic||'').toLowerCase().includes(q) ||
+    (e.style||'').toLowerCase().includes(q)
+  );
+  if (sort==='newest') list.sort((a,b)=>b.date.localeCompare(a.date));
+  if (sort==='oldest') list.sort((a,b)=>a.date.localeCompare(b.date));
+  if (sort==='done')   list.sort((a,b)=>a.status==='done'?-1:1);
+  if (sort==='draft')  list.sort((a,b)=>a.status==='draft'?-1:1);
+
+  if (!S.episodes.length) {
+    grid.innerHTML = `<div class="empty-wrap">
+      <span class="ei">🎙️</span><h3>還沒有集數</h3>
+      <p>點下方按鈕，開始建立你的第一集！</p>
+      <button class="btn-new" onclick="newEp()">＋ 建立第一集</button>
+    </div>`; return;
+  }
+  if (!list.length) {
+    grid.innerHTML = `<div class="no-results">
+      <span class="ni">🔍</span>
+      <p>找不到符合「${q||S.filter}」的集數</p>
+    </div>`; return;
+  }
+
+  grid.innerHTML = list.map(ep => {
+    const cv     = COVERS[ep.ci % COVERS.length];
+    const idx    = S.episodes.indexOf(ep);
+    const epNum  = 'EP ' + String(idx+1).padStart(2,'0');
+    const bCls   = ep.status==='done' ? 'b-done'   : 'b-draft';
+    const bLbl   = ep.status==='done' ? '✅ 已完成' : '⏳ 進行中';
+    const dotCls = ep.status==='done' ? 'done'      : 'draft';
+    const barCls = ep.status==='done' ? 'done'      : '';
+    const pctCls = ep.status==='done' ? 'pt'        : 'po';
+    const stepLbl= STEP_LABELS[ep.step]||'';
+    const act1   = ep.status==='done'
+      ? `<button class="ep-btn eb-teal"   onclick="openEp('${ep.id}');event.stopPropagation()">查看腳本</button>`
+      : `<button class="ep-btn eb-orange" onclick="contEp('${ep.id}');event.stopPropagation()">繼續製作</button>`;
+    const act2   = ep.status==='done'
+      ? `<button class="ep-btn eb-publish" onclick="openPublish('${ep.id}');event.stopPropagation()">📡 發布</button>`
+      : `<button class="ep-btn eb-ghost" onclick="openDel('${ep.id}');event.stopPropagation()">刪除</button>`;
+    const qAct   = ep.status==='done'
+      ? `<button class="eq-btn eq-main"  onclick="openEp('${ep.id}');event.stopPropagation()">查看腳本</button>
+         <button class="eq-btn" style="background:linear-gradient(90deg,#4285F4,#34A0F4);color:#fff;" onclick="openPublish('${ep.id}');event.stopPropagation()">📡 發布</button>`
+      : `<button class="eq-btn eq-main"  onclick="contEp('${ep.id}');event.stopPropagation()">繼續製作</button>
+         <button class="eq-btn eq-ghost" onclick="openDel('${ep.id}');event.stopPropagation()">刪除</button>`;
+    const clk    = ep.status==='done' ? `openEp('${ep.id}')` : `contEp('${ep.id}')`;
+    return `
+    <div class="ep-card" id="card_${ep.id}" onclick="${clk}">
+      <div class="ep-cover" style="background:${cv.bg}">
+        <span class="ep-cover-em">${cv.em}</span>
+        <span class="ep-num">${epNum}</span>
+        <span class="ep-dot ${dotCls}"></span>
+        <div class="ep-quick">
+          ${qAct}
+          <button class="eq-btn eq-ghost" onclick="openDel('${ep.id}');event.stopPropagation()">刪除</button>
+        </div>
+      </div>
+      <div class="ep-body">
+        <div class="ep-top-row">
+          <span class="ep-badge ${bCls}">${bLbl}</span>
+          <span class="ep-date">${ep.date}</span>
+        </div>
+        <div class="ep-title">${ep.title}</div>
+        <div class="ep-tags">
+          <span class="ep-tag">🎭 ${ep.style||'輕鬆聊天'}</span>
+          <span class="ep-tag">⏱ ${ep.dur||'30 分鐘'}</span>
+          ${stepLbl ? `<span class="ep-tag">📍 ${stepLbl}</span>` : ''}
+        </div>
+        <div class="ep-prog-row">
+          <span class="ep-prog-lbl">製作進度</span>
+          <span class="ep-prog-pct ${pctCls}">${ep.progress}%</span>
+        </div>
+        <div class="ep-bar-bg">
+          <div class="ep-bar-fill ${barCls}" style="width:${ep.progress}%"></div>
+        </div>
+        <div class="ep-actions">
+          ${act1}
+          ${act2}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f, btn) {
+  S.filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGrid();
+}
+
+/* ═══ PAGE SWITCH ═══ */
+function showDash() {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pgDash').classList.add('on');
+  document.getElementById('topbar').className = 'topbar dark';
+  document.getElementById('tbDash').style.display = 'block';
+  document.getElementById('tbFlow').style.display = 'none';
+  document.getElementById('botBar').style.display = 'none';
+  document.getElementById('btnSettings').classList.remove('active');
+  renderDash();
+}
+function showFlow() {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pgFlow').classList.add('on');
+  document.getElementById('topbar').className = 'topbar light';
+  document.getElementById('tbDash').style.display = 'none';
+  document.getElementById('tbFlow').style.display = 'flex';
+  document.getElementById('btnSettings').classList.remove('active');
+}
+function goToDash() { saveEp(); showDash(); }
+
+/* ═══ EPISODE OPS ═══ */
+function newEp() {
+  const id='ep_'+Date.now(), ci=Math.floor(Math.random()*COVERS.length);
+  S.episodes.unshift({ id, title:'（新集數）', topic:'', style:'輕鬆聊天', dur:'30 分鐘',
+    status:'draft', progress:0, step:1, date:new Date().toISOString().slice(0,10),
+    ci, titles:[], selTitle:-1, segments:[] });
+  S.activeId=id; loadEp(S.episodes[0]); showFlow(); showScreen(1);
+}
+function contEp(id) {
+  const ep=S.episodes.find(e=>e.id===id);
+  S.activeId=id; loadEp(ep); showFlow(); showScreen(ep.step||1);
+}
+function openEp(id) {
+  const ep=S.episodes.find(e=>e.id===id);
+  S.activeId=id; loadEp(ep); showFlow(); showScreen(5);
+}
+function loadEp(ep) {
+  S.topic=ep.topic; S.titles=ep.titles?[...ep.titles]:[];
+  S.selTitle=ep.selTitle??-1;
+  S.segments=ep.segments?JSON.parse(JSON.stringify(ep.segments)):[];
+  S.version=1;
+  const ti=document.getElementById('topicInp');
+  if(ti){ ti.value=ep.topic||''; updateCC(ti,'topicCC',200); }
+  if(S.segments.length) renderSegs();
+  if(S.titles.length)   renderTitles();
+  if(ep.status==='done') buildScript();
+}
+function saveEp() {
+  if(!S.activeId) return;
+  const ep=S.episodes.find(e=>e.id===S.activeId); if(!ep) return;
+  const ti=document.getElementById('topicInp');
+  ep.topic=ti?ti.value.trim():S.topic;
+  ep.titles=S.titles; ep.selTitle=S.selTitle;
+  ep.segments=S.segments; ep.step=S.curScreen;
+  if(S.selTitle>=0&&S.titles[S.selTitle]) ep.title=S.titles[S.selTitle].zh;
+  else if(ep.topic) ep.title=ep.topic.slice(0,22)+(ep.topic.length>22?'…':'');
+  const pm={1:5,2:30,3:60,4:80,5:100};
+  ep.progress=pm[S.curScreen]||ep.progress;
+  if(S.curScreen===5) ep.status='done';
+}
+function openDel(id) {
+  S.delId=id;
+  const ep=S.episodes.find(e=>e.id===id);
+  document.getElementById('delDesc').textContent=`「${ep?ep.title:'這集'}」刪除後將無法復原。`;
+  openModal('delModal');
+}
+function confirmDel() {
+  S.episodes=S.episodes.filter(e=>e.id!==S.delId);
+  closeModal('delModal'); renderDash(); toast('🗑️ 已刪除');
+}
+
+/* ═══ FLOW ═══ */
+function showScreen(n) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  const el=document.getElementById('s'+n); if(el) el.classList.add('on');
+  S.curScreen=n;
+  for(let i=1;i<=5;i++){
+    const d=document.getElementById('fd'+i),l=document.getElementById('fl'+i); if(!d) continue;
+    d.className='flow-dot';
+    if(n===i) d.classList.add('active'); else if(n>i) d.classList.add('done');
+    if(l) l.className='flow-line'+(n>i?' done':'');
+  }
+  const bb=document.getElementById('botBar');
+  if(n===4||n===5){bb.style.display='none';return;}
+  bb.style.display='flex';
+  document.getElementById('nextTxt').textContent=n===3?'腳本看完了，繼續':'下一步';
+}
+function flowNext() {
+  const n=S.curScreen;
+  if(n===1){genTitles();return;}
+  if(n===2){genScript();return;}
+  if(n===3){showScreen(4);return;}
+}
+function flowBack() {
+  if(S.curScreen>1) showScreen(S.curScreen-1); else goToDash();
+}
+
+/* Titles */
+function genTitles() {
+  showLoad('AI 正在構思標題…','幫你想 5 個吸引人的好標題');
+  setTimeout(()=>{ hideLoad(); S.titles=[...DEMO_TITLES].sort(()=>Math.random()-.5); S.selTitle=-1; renderTitles(); showScreen(2); },1600);
+}
+function renderTitles() {
+  document.getElementById('titleList').innerHTML=S.titles.map((t,i)=>`
+    <div class="title-card ${S.selTitle===i?'sel':''}" id="tc${i}" onclick="pickTitle(${i})">
+      <div class="tc-num">${i+1}</div>
+      <div class="tc-body"><div class="tc-zh">${t.zh}</div><div class="tc-en">${t.en}</div><span class="tc-hook">💡 ${t.hook}</span></div>
+    </div>`).join('');
+}
+function pickTitle(i) { S.selTitle=i; document.querySelectorAll('.title-card').forEach((c,j)=>c.classList.toggle('sel',j===i)); }
+function regenTitles() {
+  showLoad('重新發想標題中…','換一批全新的角度');
+  setTimeout(()=>{ hideLoad(); S.titles=[...DEMO_TITLES].sort(()=>Math.random()-.5); S.selTitle=-1; renderTitles(); toast('5 個全新標題來了！'); },1400);
+}
+
+/* Script */
+function genScript() {
+  showLoad('AI 正在撰寫腳本…','依照你的主題生成完整腳本，請稍候');
+  setTimeout(()=>{ hideLoad(); S.segments=JSON.parse(JSON.stringify(DEMO_SEGS)); renderSegs(); showScreen(3); },2400);
+}
+function renderSegs() {
+  document.getElementById('segList').innerHTML=S.segments.map((seg,i)=>{
+    const tcls=seg.tag==='intro'?'t-intro':seg.tag==='outro'?'t-outro':'t-seg';
+    const tlbl=seg.tag==='intro'?'開場':seg.tag==='outro'?'結尾':'主體';
+    return `<div class="seg-card" id="sc${i}">
+      <div class="seg-head" onclick="togSeg(${i})">
+        <div class="seg-head-l"><span class="seg-tag ${tcls}">${tlbl}</span><span class="seg-name">${seg.label}</span></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span class="seg-dur">${seg.dur}</span><span class="seg-arrow">▼</span></div>
+      </div>
+      <div class="seg-body">
+        <div class="seg-text">${seg.content}</div>
+        <div>${seg.cues.map(c=>`<span class="cue-badge">${c}</span>`).join('')}</div>
+        <div class="seg-acts">
+          <button class="btn-sm bsm-audio" onclick="openVoice(${i});event.stopPropagation()">🔊 試聽示範</button>
+          <button class="btn-sm bsm-edit"  onclick="openEdit(${i});event.stopPropagation()">✏️ 修改這段</button>
+        </div>
+        <div id="aa${i}"></div>
+      </div>
+    </div>`;
+  }).join('');
+  togSeg(0);
+}
+function togSeg(i){ document.getElementById('sc'+i).classList.toggle('open'); }
+
+/* Edit */
+function openEdit(i){ S.editIdx=i; document.getElementById('editLabel').textContent=S.segments[i].label; document.getElementById('editTA').value=S.segments[i].content; openModal('editModal'); setTimeout(()=>document.getElementById('editTA').focus(),80); }
+function saveEdit(){ const v=document.getElementById('editTA').value.trim(); if(!v){toast('內容不能是空的 ⚠️');return;} S.segments[S.editIdx].content=v; closeModal('editModal'); renderSegs(); togSeg(S.editIdx); toast('✅ 這段已更新！'); }
+
+/* Voice */
+function openVoice(i){ S.voiceSeg=i; openModal('voiceModal'); }
+function selVoice(b,v){ document.querySelectorAll('[data-voice]').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); S.vc.voice=v; }
+function selSpeed(b,v){ document.querySelectorAll('[data-speed]').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); S.vc.speed=v; }
+function selPitch(b,v){ document.querySelectorAll('[data-pitch]').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); S.vc.pitch=v; }
+function doGenAudio(){
+  closeModal('voiceModal'); const i=S.voiceSeg;
+  const vl=S.vc.voice==='female'?'女聲':'男聲';
+  const sl={slow:'慢速',normal:'正常',fast:'快速'}[S.vc.speed];
+  showLoad('生成示範音檔中…',`${vl} · ${sl} · 台灣口音`);
+  setTimeout(()=>{
+    hideLoad();
+    document.getElementById('aa'+i).innerHTML=`
+      <div class="audio-player" style="margin-top:12px;">
+        <button class="audio-play-btn" onclick="simPlay(this,${i})">▶</button>
+        <div class="audio-info"><div class="audio-lbl">🤖 AI 示範 · ${vl} · ${sl} · 台灣口音</div><div class="audio-track"><div class="audio-prog" id="ap${i}"></div></div></div>
+      </div>
+      <div style="margin-top:9px;"><label style="font-size:12px;font-weight:700;color:var(--gray-mid);display:block;margin-bottom:7px;">🎙️ 上傳你的錄音對照</label>
+      <input type="file" accept="audio/*" onchange="showHostAudio(this,${i})" style="font-size:12px;color:var(--gray-mid);"></div>
+      <div id="ha${i}"></div>`;
+    const card=document.getElementById('sc'+i); if(!card.classList.contains('open')) togSeg(i);
+    toast('🎧 示範音檔已生成！');
+  },2000);
+}
+function simPlay(btn,i){ btn.textContent='⏸'; const bar=document.getElementById('ap'+i); let w=0; const iv=setInterval(()=>{ w++; if(bar) bar.style.width=w+'%'; if(w>=100){clearInterval(iv);btn.textContent='▶';if(bar)bar.style.width='0%';}},80); }
+function showHostAudio(inp,i){
+  if(!inp.files[0]) return;
+  document.getElementById('ha'+i).innerHTML=`<div class="audio-player" style="margin-top:9px;background:var(--orange-pale);border-color:#FFB899;"><button class="audio-play-btn" style="background:var(--orange);" onclick="simPlay(this,'h${i}')">▶</button><div class="audio-info"><div class="audio-lbl" style="color:var(--orange);">🎙️ 你的錄音 · ${inp.files[0].name}</div><div class="audio-track" style="background:var(--orange-pale);"><div class="audio-prog" id="aph${i}" style="background:var(--orange);"></div></div></div></div>`;
+  toast('✅ 錄音上傳成功，可以對照囉！');
+}
+
+/* Feedback */
+function setRating(id,v){ S.ratings[id]=v; document.getElementById(id).querySelectorAll('.star-btn').forEach((s,i)=>s.classList.toggle('on',i<v)); }
+function addTag(t){ const f=document.getElementById('fbInp'); f.value=(f.value?f.value+'\n':'')+t; }
+function submitFb(){ const f=document.getElementById('fbInp').value.trim(); if(!f&&!Object.values(S.ratings).some(v=>v>0)){toast('請先打個分數或寫下意見 💬');return;} S.version++; showLoad('AI 正在優化腳本…',`根據你的回饋重新調整（第 ${S.version} 版）`); setTimeout(()=>{ hideLoad(); showScreen(3); toast(`✨ 第 ${S.version} 版腳本已更新！`); },2000); }
+function doExport(){ buildScript(); markDone(); showScreen(5); }
+function buildScript(){ const t=S.selTitle>=0&&S.titles[S.selTitle]?S.titles[S.selTitle].zh:'（未選擇標題）'; let txt=`【${t}】\n\n`; S.segments.forEach(s=>{ txt+=`── ${s.label}（${s.dur}）──\n${s.content}\n\n`; }); document.getElementById('finalTxt').textContent=txt; S._script=txt; }
+function markDone(){ const ep=S.episodes.find(e=>e.id===S.activeId); if(ep){ep.status='done';ep.progress=100;ep.step=5;} }
+function copyScript(){ navigator.clipboard.writeText(S._script||'').then(()=>toast('✅ 已複製到剪貼板！')).catch(()=>toast('請手動複製上方文字')); }
+function dlScript(){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([S._script||''],{type:'text/plain;charset=utf-8'})); a.download='podcast_script.txt'; a.click(); toast('⬇️ 下載完成！'); }
+
+/* Helpers */
+function openModal(id)  { document.getElementById(id).classList.add('on'); }
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+function showLoad(t,s)  { document.getElementById('loadTxt').textContent=t||'AI 處理中…'; document.getElementById('loadSub').textContent=s||'請稍候'; document.getElementById('loading').classList.add('on'); }
+function hideLoad()     { document.getElementById('loading').classList.remove('on'); }
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2800); }
+function updateCC(el,id){ document.getElementById(id).textContent=el.value.length; }
+function toggleOpt(b){ b.classList.toggle('sel'); }
+function selOne(b){ b.closest('.opt-grid').querySelectorAll('.opt-btn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); }
+
+/* Keyboard */
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') ['voiceModal','editModal','delModal','publishModal'].forEach(closeModal);
+  if(e.key==='n'&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'&&document.getElementById('pgDash').classList.contains('on')) newEp();
+  if(e.key==='Enter'&&e.ctrlKey&&document.getElementById('pgFlow').classList.contains('on')) flowNext();
+});
+['voiceModal','editModal','delModal','publishModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click', e=>{ if(e.target===document.getElementById(id)) closeModal(id); });
+});
+
+/* ═══ SETTINGS ═══ */
+const CFG_DEFAULTS = {
+  'show-name':'', 'show-desc':'', 'author':'', 'email':'', 'website':'',
+  'category':'technology', 'lang':'zh-tw', 'explicit':'clean',
+  'google-enabled':false, 'google-rss':'', 'google-verify':'', 'google-interval':'auto',
+  'apple-enabled':false, 'apple-id':'', 'apple-provider-id':'', 'apple-key':'', 'apple-key-id':'', 'apple-team-id':'', 'apple-rss':'',
+  'llm-provider':'claude', 'llm-model':'claude-sonnet-4-6', 'llm-key':'',
+  'tts-provider':'google', 'tts-key':'',
+};
+let CFG = Object.assign({}, CFG_DEFAULTS);
+
+function loadSettings() {
+  try { const s=localStorage.getItem('pc_cfg'); if(s) CFG=Object.assign({},CFG_DEFAULTS,JSON.parse(s)); } catch(e){}
+  Object.keys(CFG).forEach(k=>{
+    const el=document.getElementById('cfg-'+k);
+    if(!el) return;
+    if(el.type==='checkbox') el.checked=!!CFG[k];
+    else el.value=CFG[k]||'';
+  });
+  updatePlatStatus('google');
+  updatePlatStatus('apple');
+}
+
+function saveAllSettings() {
+  Object.keys(CFG).forEach(k=>{
+    const el=document.getElementById('cfg-'+k);
+    if(!el) return;
+    CFG[k] = el.type==='checkbox' ? el.checked : el.value;
+  });
+  try { localStorage.setItem('pc_cfg', JSON.stringify(CFG)); } catch(e){}
+  toast('✅ 所有設定已儲存！');
+}
+
+function savePlatform(plat) {
+  const keys = plat==='google'
+    ? ['google-enabled','google-rss','google-verify','google-interval']
+    : ['apple-enabled','apple-id','apple-provider-id','apple-key','apple-key-id','apple-team-id','apple-rss'];
+  keys.forEach(k=>{
+    const el=document.getElementById('cfg-'+k);
+    if(!el) return;
+    CFG[k] = el.type==='checkbox' ? el.checked : el.value;
+  });
+  try { localStorage.setItem('pc_cfg', JSON.stringify(CFG)); } catch(e){}
+  updatePlatStatus(plat);
+  toast('✅ ' + (plat==='google'?'Google':'Apple') + ' 設定已儲存！');
+}
+
+function updatePlatStatus(plat) {
+  const el=document.getElementById(plat+'CfgStatus'); if(!el) return;
+  const enabled = document.getElementById('cfg-'+plat+'-enabled')?.checked;
+  const hasKey  = plat==='google'
+    ? !!(document.getElementById('cfg-google-rss')?.value?.trim())
+    : !!(document.getElementById('cfg-apple-key')?.value?.trim());
+  if(!enabled) { el.innerHTML=`<span class="set-status ss-none">⭘ 未啟用</span>`; return; }
+  if(hasKey) el.innerHTML=`<span class="set-status ss-ok">✓ 已設定</span>`;
+  else       el.innerHTML=`<span class="set-status ss-pending">⚠ 尚未填寫必要欄位</span>`;
+}
+
+function testPlatform(plat) {
+  const label = plat==='google' ? 'Google RSS Feed' : 'Apple Podcasts API';
+  const key   = plat==='google' ? document.getElementById('cfg-google-rss')?.value : document.getElementById('cfg-apple-key')?.value;
+  if(!key?.trim()) { toast(`⚠️ 請先填寫 ${label} 的設定`); return; }
+  showLoad(`測試 ${label} 連線中…`, '正在發送測試請求，請稍候');
+  setTimeout(()=>{
+    hideLoad();
+    toast(`✅ ${label} 連線測試成功！`);
+  }, 1800);
+}
+
+function updateLLMFields() {
+  const p=document.getElementById('cfg-llm-provider')?.value;
+  const m=document.getElementById('cfg-llm-model');
+  const k=document.getElementById('cfg-llm-key');
+  if(!m||!k) return;
+  if(p==='claude'){
+    m.innerHTML='<option value="claude-sonnet-4-6">claude-sonnet-4-6</option><option value="claude-opus-4-6">claude-opus-4-6</option>';
+    k.placeholder='sk-ant-…';
+  } else {
+    m.innerHTML='<option value="gemini-2.0-flash">gemini-2.0-flash</option><option value="gemini-1.5-pro">gemini-1.5-pro</option>';
+    k.placeholder='AI…（Google API Key）';
+  }
+}
+
+function toggleSettings() {
+  const inSettings = document.getElementById('pgSettings').classList.contains('on');
+  if(inSettings) { goToDash(); return; }
+  // Save current page context
+  saveEp();
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pgSettings').classList.add('on');
+  document.getElementById('topbar').className='topbar dark';
+  document.getElementById('tbDash').style.display='none';
+  document.getElementById('tbFlow').style.display='none';
+  document.getElementById('botBar').style.display='none';
+  document.getElementById('btnSettings').classList.add('active');
+  loadSettings();
+}
+
+/* ═══ PUBLISH ═══ */
+S.pubId = null;
+S.pubPlats = new Set();
+
+function openPublish(id) {
+  const ep = S.episodes.find(e=>e.id===id);
+  if(!ep) return;
+  S.pubId = id;
+  S.pubPlats.clear();
+  // Reset steps
+  ['pubStep1','pubStep2','pubStep3'].forEach(s=>{ const el=document.getElementById(s); if(el){el.classList.remove('on');} });
+  document.getElementById('pubStep1').classList.add('on');
+  // Pre-fill from episode
+  const ni=document.getElementById('pubTitle');
+  if(ni) ni.value = ep.title||'';
+  const nd=document.getElementById('pubDesc');
+  if(nd) nd.value = ep.topic ? `本集主題：${ep.topic}` : '';
+  const nn=document.getElementById('pubEpNum');
+  if(nn) nn.value = S.episodes.indexOf(ep)+1;
+  const ndt=document.getElementById('pubDate');
+  if(ndt) ndt.value = new Date().toISOString().slice(0,10);
+  // Reset platform selections
+  document.querySelectorAll('.pub-plat').forEach(p=>p.classList.remove('sel'));
+  openModal('publishModal');
+}
+
+function togglePlat(plat) {
+  const el=document.getElementById('plat-'+plat);
+  if(!el) return;
+  if(S.pubPlats.has(plat)){ S.pubPlats.delete(plat); el.classList.remove('sel'); }
+  else { S.pubPlats.add(plat); el.classList.add('sel'); }
+}
+
+function doPublish() {
+  if(S.pubPlats.size===0){ toast('⚠️ 請至少選擇一個發布平台'); return; }
+  const title=document.getElementById('pubTitle')?.value?.trim();
+  if(!title){ toast('⚠️ 請填寫集數標題'); return; }
+  // Check platform config
+  const missingCfg=[];
+  if(S.pubPlats.has('google')&&!CFG['google-rss']) missingCfg.push('Google RSS Feed URL');
+  if(S.pubPlats.has('apple')&&!CFG['apple-key'])  missingCfg.push('Apple Podcasts API Key');
+  if(missingCfg.length){
+    toast(`⚠️ 尚未設定：${missingCfg.join('、')}`);
+    return;
+  }
+  // Show step 2
+  document.getElementById('pubStep1').classList.remove('on');
+  document.getElementById('pubStep2').classList.add('on');
+  const platsArr=[...S.pubPlats];
+  const progList=document.getElementById('pubProgList');
+  if(progList) progList.innerHTML=platsArr.map(p=>`
+    <div id="prog-${p}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gray-pale);border-radius:var(--radius-xs);font-size:13px;font-weight:700;">
+      <span style="font-size:18px;">${p==='google'?'🎙️':'🍎'}</span>
+      <span>${p==='google'?'Google Podcasts':'Apple Podcasts'}</span>
+      <span style="margin-left:auto;color:var(--gray-mid);">處理中…</span>
+    </div>`).join('');
+  // Simulate async publish per platform
+  let done=0;
+  platsArr.forEach((p,i)=>{
+    setTimeout(()=>{
+      const el=document.getElementById('prog-'+p);
+      if(el) el.innerHTML=`<span style="font-size:18px;">${p==='google'?'🎙️':'🍎'}</span><span>${p==='google'?'Google Podcasts':'Apple Podcasts'}</span><span style="margin-left:auto;color:var(--teal);">✓ 發布成功</span>`;
+      done++;
+      if(done===platsArr.length) setTimeout(()=>showPubSuccess(platsArr,title),600);
+    }, 1400+(i*900));
+  });
+}
+
+function showPubSuccess(plats, title) {
+  document.getElementById('pubStep2').classList.remove('on');
+  document.getElementById('pubStep3').classList.add('on');
+  const desc=document.getElementById('pubSuccessDesc');
+  if(desc) desc.innerHTML=`「${title}」已成功提交到 ${plats.length} 個平台。<br>通常需要 24–72 小時審核後才會上架。`;
+  const links=document.getElementById('pubLinks');
+  if(links) links.innerHTML=plats.map(p=>{
+    if(p==='google') return `<a class="pub-link-item" href="https://podcasts.google.com" target="_blank" rel="noopener"><div class="pub-link-plat pl-google" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">🎙️</div><span>在 Google Podcasts 查看</span><span style="margin-left:auto;color:var(--gray-mid);font-size:11px;">→</span></a>`;
+    return `<a class="pub-link-item" href="https://podcastsconnect.apple.com" target="_blank" rel="noopener"><div class="pub-link-plat pl-apple" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">🍎</div><span>在 Apple Podcasts Connect 查看</span><span style="margin-left:auto;color:var(--gray-mid);font-size:11px;">→</span></a>`;
+  }).join('');
+  // Update episode publish status
+  const ep=S.episodes.find(e=>e.id===S.pubId);
+  if(ep){ ep.published=plats; ep.publishedAt=new Date().toISOString().slice(0,10); }
+  renderDash();
+}
+
+init();
+</script>
+</body>
+</html>

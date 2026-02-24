@@ -1,0 +1,28 @@
+[project]
+name = "podcast-entertain-creator"
+version = "0.1.0"
+description = "LINE Bot for AI-assisted Podcast content creation"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "line-bot-sdk>=3.14",
+    "aiosqlite>=0.20",
+    "pydantic-settings>=2.7",
+    "python-dotenv>=1.0",
+    "anthropic>=0.42",
+    "google-genai>=1.0",
+    "google-cloud-texttospeech>=2.22",
+    "aiohttp>=3.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

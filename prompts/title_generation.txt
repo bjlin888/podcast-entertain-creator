@@ -1,0 +1,12 @@
+請為以下 Podcast 主題生成 5 組候選標題。
+
+主題：{topic}
+目標聽眾：{audience}
+風格：{style}
+
+每組標題包含：
+- title_zh：繁體中文標題
+- title_en：英文副標題
+
+請以 JSON 格式回應：
+{{"titles": [{{"title_zh": "...", "title_en": "..."}}, ...]}}

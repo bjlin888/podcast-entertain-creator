@@ -1,0 +1,10 @@
+請根據以下回饋優化腳本段落。
+
+原始段落內容：
+{original_content}
+
+使用者回饋：{feedback}
+評分：{scores}
+
+請保持相同的段落格式，優化後以 JSON 格式回應：
+{{"segment_type": "...", "content": "...", "cues": [...]}}

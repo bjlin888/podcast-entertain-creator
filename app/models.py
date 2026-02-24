@@ -1,0 +1,21 @@
+from enum import Enum
+
+
+class BotState(str, Enum):
+    IDLE = "IDLE"
+    SELECT_LLM = "SELECT_LLM"
+    COLLECT_INFO = "COLLECT_INFO"
+    TITLE_REVIEW = "TITLE_REVIEW"
+    SCRIPT_REVIEW = "SCRIPT_REVIEW"
+    TTS_CONFIG = "TTS_CONFIG"
+    TTS_GENERATING = "TTS_GENERATING"
+    FEEDBACK_LOOP = "FEEDBACK_LOOP"
+    EXPORT = "EXPORT"
+
+
+class CollectInfoStep(str, Enum):
+    TOPIC = "TOPIC"
+    AUDIENCE = "AUDIENCE"
+    DURATION = "DURATION"
+    STYLE = "STYLE"
+    HOST_COUNT = "HOST_COUNT"

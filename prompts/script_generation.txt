@@ -1,0 +1,16 @@
+請根據以下資訊，生成完整的 Podcast 腳本。
+
+標題：{selected_title}
+主題：{topic}
+目標聽眾：{audience}
+風格：{style}
+預計時長：{duration_min} 分鐘
+主持人數：{host_count} 人
+
+腳本需分段（開場、主題段落、結尾），每段包含：
+- segment_type：段落類型（opening / main / closing）
+- content：腳本內容（含語氣提示如 (停頓)、(強調) 等）
+- cues：標記列表，如 ["(停頓)", "[BGM fade in]"]
+
+請以 JSON 格式回應：
+{{"segments": [{{"segment_type": "...", "content": "...", "cues": [...]}}, ...]}}
