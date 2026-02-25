@@ -8,7 +8,6 @@ steps:
     args:
       - '-c'
       - |
-        DATA_BUCKET="${_DATA_BUCKET:-$PROJECT_ID-podcast-data}"
         gcloud run deploy ${_SERVICE} \
           --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA \
           --region=${_REGION} \
@@ -21,7 +20,7 @@ steps:
           --execution-environment=gen2 \
           --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,ENCRYPTION_KEY=encryption-key:latest \
           --update-env-vars=CORS_ORIGINS=${_CORS_ORIGINS} \
-          --add-volume=name=data-vol,type=cloud-storage,bucket=$$DATA_BUCKET \
+          --add-volume=name=data-vol,type=cloud-storage,bucket=${_DATA_BUCKET} \
           --add-volume-mount=volume=data-vol,mount-path=/app/data
 
 substitutions:
@@ -29,7 +28,7 @@ substitutions:
   _REPO: podcast-creator
   _SERVICE: podcast-creator
   _CORS_ORIGINS: https://podcast-creator-HASH.a.run.app
-  _DATA_BUCKET: ''  # Defaults to $PROJECT_ID-podcast-data if empty
+  _DATA_BUCKET: ${PROJECT_ID}-podcast-data
 
 images:
   - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA'
