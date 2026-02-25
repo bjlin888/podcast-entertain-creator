@@ -15,7 +15,7 @@ from app.db import (
     get_titles_by_project,
     select_title,
 )
-from app.llm.factory import get_provider
+from app.llm.factory import get_provider_for_user
 from app.llm.prompt_builder import load_prompt
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ async def generate_titles(
         llm_provider = project.get("llm_provider") or "gemini"
 
         try:
-            provider = get_provider(llm_provider)
+            provider = await get_provider_for_user(user_id, llm_provider)
             system = load_prompt("system")
             user_msg = load_prompt(
                 "title_generation",

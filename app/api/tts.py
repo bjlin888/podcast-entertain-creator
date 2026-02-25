@@ -55,6 +55,7 @@ async def generate_tts(
                 pitch=body.pitch,
                 style_prompt=body.style_prompt,
                 provider_name=body.tts_provider,
+                user_id=user_id,
             )
             filename = save_audio(audio_bytes, extension=ext)
             audio_url = get_audio_url(filename)
@@ -118,6 +119,7 @@ async def generate_multi_speaker_tts(
                 speakers=body.speakers,
                 style_prompt=body.style_prompt,
                 provider_name=body.tts_provider,
+                user_id=user_id,
             )
             filename = save_audio(audio_bytes, extension=ext)
             audio_url = get_audio_url(filename)

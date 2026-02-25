@@ -74,8 +74,8 @@ if [[ -z "${CORS_ORIGINS:-}" ]]; then
   fi
 fi
 
-# Build secrets flag — Anthropic key is optional
-SECRETS="GEMINI_API_KEY=gemini-api-key:latest"
+# Build secrets flag — some secrets are optional
+SECRETS="GEMINI_API_KEY=gemini-api-key:latest,ENCRYPTION_KEY=encryption-key:latest"
 if gcloud secrets describe anthropic-api-key &>/dev/null; then
   SECRETS="${SECRETS},ANTHROPIC_API_KEY=anthropic-api-key:latest"
 else

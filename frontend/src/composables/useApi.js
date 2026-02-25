@@ -84,6 +84,10 @@ export function useApi() {
     return request(endpoint, { method: 'PATCH', body })
   }
 
+  async function put(endpoint, body) {
+    return request(endpoint, { method: 'PUT', body })
+  }
+
   async function del(endpoint) {
     return request(endpoint, { method: 'DELETE' })
   }
@@ -97,6 +101,7 @@ export function useApi() {
     error,
     get,
     post,
+    put,
     patch,
     del,
     upload,

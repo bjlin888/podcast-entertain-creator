@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { useApi } from '../composables/useApi'
 
 const STORAGE_KEY = 'podcast_settings'
 
@@ -51,9 +52,14 @@ export const useSettingsStore = defineStore('settings', () => {
   // AI config
   const llmProvider = ref(stored.llmProvider || 'claude')
   const llmModel = ref(stored.llmModel || 'claude-sonnet-4-6')
-  const llmKey = ref(stored.llmKey || '')
+  const llmKey = ref('')  // Never load from storage; input only
   const ttsProvider = ref(stored.ttsProvider || 'gemini')
-  const ttsKey = ref(stored.ttsKey || '')
+  const ttsKey = ref('')  // Never load from storage; input only
+
+  // Key status from backend
+  const hasGeminiKey = ref(false)
+  const hasClaudeKey = ref(false)
+  const aiSaving = ref(false)
 
   // Status helpers
   function googleStatus() {
@@ -75,8 +81,77 @@ export const useSettingsStore = defineStore('settings', () => {
     return ['gemini-2.5-flash', 'gemini-2.5-pro']
   }
 
-  // Save all
-  function saveAll() {
+  // Load AI key status from backend
+  async function loadAiSettings() {
+    const { get } = useApi()
+    try {
+      const data = await get('/api/v1/settings/ai')
+      for (const p of data.providers || []) {
+        if (p.provider === 'gemini') {
+          hasGeminiKey.value = p.has_key
+          if (p.model) llmModel.value = p.model
+        }
+        if (p.provider === 'claude') {
+          hasClaudeKey.value = p.has_key
+          if (p.model) llmModel.value = p.model
+        }
+      }
+    } catch {
+      // Backend unavailable, ignore
+    }
+  }
+
+  // Save AI settings to backend
+  async function saveAiSettings() {
+    const { put } = useApi()
+    aiSaving.value = true
+    try {
+      const providers = []
+
+      // LLM key — determine which provider the key belongs to
+      if (llmKey.value) {
+        providers.push({
+          provider: llmProvider.value,
+          api_key: llmKey.value,
+          model: llmModel.value || undefined,
+        })
+      } else if (llmModel.value) {
+        // Update model preference only (no key change)
+        providers.push({
+          provider: llmProvider.value,
+          model: llmModel.value,
+        })
+      }
+
+      // TTS key — Gemini TTS uses same key as Gemini LLM
+      if (ttsKey.value && ttsProvider.value === 'gemini') {
+        // If user entered a separate TTS key for Gemini, save as gemini provider key
+        const existing = providers.find(p => p.provider === 'gemini')
+        if (!existing) {
+          providers.push({ provider: 'gemini', api_key: ttsKey.value })
+        }
+      }
+
+      if (providers.length > 0) {
+        await put('/api/v1/settings/ai', { providers })
+      }
+
+      // Clear key inputs after save
+      llmKey.value = ''
+      ttsKey.value = ''
+
+      // Refresh status
+      await loadAiSettings()
+      return true
+    } catch {
+      return false
+    } finally {
+      aiSaving.value = false
+    }
+  }
+
+  // Save all (local + AI backend)
+  async function saveAll() {
     const data = {
       showName: showName.value,
       showDesc: showDesc.value,
@@ -99,21 +174,20 @@ export const useSettingsStore = defineStore('settings', () => {
       appleRss: appleRss.value,
       llmProvider: llmProvider.value,
       llmModel: llmModel.value,
-      llmKey: llmKey.value,
       ttsProvider: ttsProvider.value,
-      ttsKey: ttsKey.value,
+      // Do NOT persist API keys to localStorage
     }
     saveToStorage(data)
   }
 
-  // Auto-save when any value changes
-  const allRefs = [
+  // Auto-save non-sensitive settings when values change
+  const localRefs = [
     showName, showDesc, author, email, website, category, language, explicit,
     googleEnabled, googleRss, googleVerify, googleInterval,
     appleEnabled, appleId, appleProviderId, appleKey, appleKeyId, appleTeamId, appleRss,
-    llmProvider, llmModel, llmKey, ttsProvider, ttsKey,
+    llmProvider, llmModel, ttsProvider,
   ]
-  allRefs.forEach(r => {
+  localRefs.forEach(r => {
     watch(r, () => saveAll(), { deep: true })
   })
 
@@ -122,6 +196,8 @@ export const useSettingsStore = defineStore('settings', () => {
     googleEnabled, googleRss, googleVerify, googleInterval,
     appleEnabled, appleId, appleProviderId, appleKey, appleKeyId, appleTeamId, appleRss,
     llmProvider, llmModel, llmKey, ttsProvider, ttsKey,
-    googleStatus, appleStatus, getLLMModels, saveAll,
+    hasGeminiKey, hasClaudeKey, aiSaving,
+    googleStatus, appleStatus, getLLMModels,
+    loadAiSettings, saveAiSettings, saveAll,
   }
 })

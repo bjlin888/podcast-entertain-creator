@@ -17,7 +17,7 @@ from app.db import (
     get_titles_by_project,
     update_segment,
 )
-from app.llm.factory import get_provider
+from app.llm.factory import get_provider_for_user
 from app.llm.prompt_builder import load_prompt
 from app.models import SegmentEditRequest
 
@@ -49,7 +49,7 @@ async def generate_script(
         selected_title = selected["title_zh"] if selected else project["topic"]
 
         try:
-            provider = get_provider(llm_provider)
+            provider = await get_provider_for_user(user_id, llm_provider)
             system = load_prompt("system")
             user_msg = load_prompt(
                 "script_generation",
@@ -164,7 +164,7 @@ async def refine_segment(
         llm_provider = row[1] or "gemini"
 
         try:
-            provider = get_provider(llm_provider)
+            provider = await get_provider_for_user(user_id, llm_provider)
             system = load_prompt("system")
             user_msg = load_prompt(
                 "script_refinement",

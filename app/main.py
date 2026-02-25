@@ -62,6 +62,7 @@ from app.api.scripts import router as scripts_router
 from app.api.tts import router as tts_router
 from app.api.feedback import router as feedback_router
 from app.api.export import router as export_router
+from app.api.settings import router as settings_router
 
 @app.get("/health")
 async def health():
@@ -74,6 +75,7 @@ app.include_router(scripts_router, prefix="/api/v1")
 app.include_router(tts_router, prefix="/api/v1")
 app.include_router(feedback_router, prefix="/api/v1")
 app.include_router(export_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
 
 # Serve TTS audio files
 _audio_dir = Path("data/audio")

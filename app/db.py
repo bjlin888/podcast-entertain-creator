@@ -101,6 +101,17 @@ _TABLES: list[str] = [
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS user_api_keys (
+        user_id TEXT NOT NULL REFERENCES users(user_id),
+        provider TEXT NOT NULL,
+        encrypted_key TEXT NOT NULL,
+        model TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, provider)
+    )
+    """,
 ]
 
 
@@ -457,4 +468,55 @@ async def update_session(db: aiosqlite.Connection, session_id: str, **kwargs) ->
     await db.execute(
         f"UPDATE sessions SET {set_clause}, updated_at = datetime('now') WHERE session_id = ?",
         values,
+    )
+
+
+# -- User API Keys CRUD ----------------------------------------------------
+
+
+async def upsert_user_api_key(
+    db: aiosqlite.Connection,
+    user_id: str,
+    provider: str,
+    encrypted_key: str,
+    model: str | None = None,
+) -> None:
+    await db.execute(
+        """INSERT INTO user_api_keys (user_id, provider, encrypted_key, model)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(user_id, provider) DO UPDATE SET
+               encrypted_key = excluded.encrypted_key,
+               model = COALESCE(excluded.model, user_api_keys.model),
+               updated_at = datetime('now')""",
+        (user_id, provider, encrypted_key, model),
+    )
+
+
+async def get_user_api_key(
+    db: aiosqlite.Connection, user_id: str, provider: str
+) -> dict | None:
+    cursor = await db.execute(
+        "SELECT * FROM user_api_keys WHERE user_id = ? AND provider = ?",
+        (user_id, provider),
+    )
+    row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def get_user_api_keys(
+    db: aiosqlite.Connection, user_id: str
+) -> list[dict]:
+    cursor = await db.execute(
+        "SELECT user_id, provider, model, created_at, updated_at FROM user_api_keys WHERE user_id = ?",
+        (user_id,),
+    )
+    return [dict(row) for row in await cursor.fetchall()]
+
+
+async def delete_user_api_key(
+    db: aiosqlite.Connection, user_id: str, provider: str
+) -> None:
+    await db.execute(
+        "DELETE FROM user_api_keys WHERE user_id = ? AND provider = ?",
+        (user_id, provider),
     )

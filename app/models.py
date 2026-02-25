@@ -50,3 +50,13 @@ class FeedbackRequest(BaseModel):
 
 class SegmentEditRequest(BaseModel):
     content: str = Field(max_length=10000)
+
+
+class AiKeyEntry(BaseModel):
+    provider: str  # "gemini", "claude"
+    api_key: str | None = None  # plaintext; None = don't change key
+    model: str | None = None
+
+
+class SaveAiSettingsRequest(BaseModel):
+    providers: list[AiKeyEntry]

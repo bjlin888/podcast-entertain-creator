@@ -16,7 +16,7 @@ from app.db import (
     get_segments_by_script,
     get_titles_by_project,
 )
-from app.llm.factory import get_provider
+from app.llm.factory import get_provider_for_user
 from app.llm.prompt_builder import load_prompt
 from app.models import FeedbackRequest
 
@@ -76,7 +76,7 @@ async def submit_feedback(
             selected_title = selected["title_zh"] if selected else project["topic"]
 
             try:
-                provider = get_provider(llm_provider)
+                provider = await get_provider_for_user(user_id, llm_provider)
                 system = load_prompt("system")
                 user_msg = load_prompt(
                     "script_generation",
