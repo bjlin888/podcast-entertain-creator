@@ -27,7 +27,7 @@ class GeminiProvider(LLMProvider):
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
                         response_mime_type="application/json",
-                        max_output_tokens=4096,
+                        max_output_tokens=16384,
                     ),
                 )
                 usage = getattr(response, "usage_metadata", None)
@@ -40,14 +40,19 @@ class GeminiProvider(LLMProvider):
                 )
                 return json.loads(response.text)
             except json.JSONDecodeError as e:
-                raise LLMError(f"Gemini returned invalid JSON: {e}") from e
+                last_err = LLMError(f"Gemini returned invalid JSON: {e}")
+                logger.warning("Gemini invalid JSON (attempt %d/3): %s", attempt + 1, e)
+                if attempt < 2:
+                    await asyncio.sleep(1)
+                    continue
+                raise last_err from e
             except LLMError:
                 raise
             except Exception as e:
                 last_err = e
-                if "503" in str(e) and attempt < 2:
+                if ("503" in str(e) or "500" in str(e)) and attempt < 2:
                     wait = (attempt + 1) * 3
-                    logger.warning("Gemini 503, retrying in %ds (attempt %d/3)", wait, attempt + 1)
+                    logger.warning("Gemini %s, retrying in %ds (attempt %d/3)", e, wait, attempt + 1)
                     await asyncio.sleep(wait)
                     continue
                 raise LLMError(f"Gemini API error: {e}") from e
