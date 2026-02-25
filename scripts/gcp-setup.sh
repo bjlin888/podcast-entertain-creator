@@ -99,16 +99,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Grant IAM roles to Cloud Build service account
+# 4. Grant IAM roles to service accounts
 # ---------------------------------------------------------------------------
-echo ">>> Granting IAM roles to Cloud Build SA..."
 PROJECT_NUMBER=$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')
-CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 
-for role in roles/run.admin roles/secretmanager.secretAccessor roles/iam.serviceAccountUser; do
+# Cloud Build default SA (used by gcloud builds submit)
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+echo ">>> Granting IAM roles to compute default SA (${COMPUTE_SA})..."
+for role in roles/run.admin roles/secretmanager.secretAccessor roles/iam.serviceAccountUser roles/storage.objectAdmin roles/artifactregistry.writer roles/logging.logWriter; do
   echo "    Binding ${role}..."
   gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-    --member="serviceAccount:${CB_SA}" \
+    --member="serviceAccount:${COMPUTE_SA}" \
     --role="${role}" \
     --condition=None \
     --quiet

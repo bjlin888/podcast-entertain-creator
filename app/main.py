@@ -63,6 +63,11 @@ from app.api.tts import router as tts_router
 from app.api.feedback import router as feedback_router
 from app.api.export import router as export_router
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(titles_router, prefix="/api/v1")
 app.include_router(scripts_router, prefix="/api/v1")
@@ -75,12 +80,7 @@ _audio_dir = Path("data/audio")
 _audio_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
 
-# Serve frontend in production
+# Serve frontend in production (must be last — catch-all)
 _frontend_dist = Path("frontend/dist")
 if _frontend_dist.is_dir():
     app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
