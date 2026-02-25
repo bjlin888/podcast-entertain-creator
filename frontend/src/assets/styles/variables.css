@@ -15,6 +15,12 @@
   --gold:         #D4A017;
   --gold-pale:    #FFF8E0;
 
+  /* Extended palette */
+  --purple:       #7C5CBF;
+  --purple-pale:  #F0E8FF;
+  --blue:         #2E7DB8;
+  --blue-pale:    #E0F0FF;
+
   /* Neutrals */
   --ink:          #0F0E0C;
   --ink-soft:     #1C1A17;

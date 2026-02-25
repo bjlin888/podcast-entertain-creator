@@ -129,10 +129,20 @@ function handleBack() {
 async function handleNext() {
   switch (flow.currentStep) {
     case 1:
-      await flow.generateTitles()
+      if (flow.canSkipTitleGeneration()) {
+        flow.currentStep = 2
+        flow.saveToEpisodeStore()
+      } else {
+        await flow.generateTitles()
+      }
       break
     case 2:
-      await flow.generateScript()
+      if (flow.canSkipScriptGeneration()) {
+        flow.currentStep = 3
+        flow.saveToEpisodeStore()
+      } else {
+        await flow.generateScript()
+      }
       break
     case 3:
       flow.currentStep = 4

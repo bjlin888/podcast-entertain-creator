@@ -1,10 +1,25 @@
 請根據以下回饋優化腳本段落。
 
+段落類型：{segment_type}
+段落標題：{label}
 原始段落內容：
 {original_content}
 
 使用者回饋：{feedback}
 評分：{scores}
 
+## 結構感知優化指引
+
+根據段落類型提供針對性優化：
+- cold_open：確保 Hook 夠強，10-20 秒內抓住注意力，可嘗試不同 Hook 手法（挑釁性提問、驚人數據、故事鉤子等）
+- jingle：保持簡潔，5-10 秒品牌識別
+- host_intro：價值承諾要明確，讓聽眾知道「聽完能獲得什麼」
+- topic_intro：背景鋪陳要引人入勝，銜接 cold_open 的懸念
+- core_1 / core_2：確保論點清晰，善用「論點 → 證據 → 故事 → 啟示」結構
+- ad_break：在前一段結尾製造懸念，讓聽眾想繼續聽
+- summary：提煉核心要點，不要簡單重複
+- cta：控制在 15-30 秒，必須與本集內容相關
+- preview：製造期待感，讓聽眾想追下一集
+
 請保持相同的段落格式，優化後以 JSON 格式回應：
-{{"segment_type": "...", "content": "...", "cues": [...]}}
+{{"segment_type": "{segment_type}", "label": "...", "content": "...", "cues": [...], "estimated_duration": "..."}}

@@ -119,6 +119,9 @@ _TABLES: list[str] = [
 _MIGRATIONS: list[str] = [
     # Add tts_provider column to voice_samples (for existing databases)
     """ALTER TABLE voice_samples ADD COLUMN tts_provider TEXT DEFAULT 'gemini'""",
+    # 三層十段: add label and estimated_duration to script_segments
+    """ALTER TABLE script_segments ADD COLUMN label TEXT""",
+    """ALTER TABLE script_segments ADD COLUMN estimated_duration TEXT""",
 ]
 
 
@@ -389,8 +392,8 @@ async def create_segments(
         segment_id = str(uuid4())
         await db.execute(
             """INSERT INTO script_segments
-               (segment_id, script_id, segment_order, segment_type, content, cues)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               (segment_id, script_id, segment_order, segment_type, content, cues, label, estimated_duration)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 segment_id,
                 script_id,
@@ -398,6 +401,8 @@ async def create_segments(
                 seg.get("segment_type", "main"),
                 seg["content"],
                 _json.dumps(seg.get("cues", []), ensure_ascii=False),
+                seg.get("label"),
+                seg.get("estimated_duration"),
             ),
         )
         segment_ids.append(segment_id)

@@ -59,9 +59,15 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle', 'edit', 'voice', 'play', 'upload'])
 
-const TAG_LABELS = { intro: '開場白', seg: '內容段', outro: '結尾' }
+const TAG_LABELS = {
+  'cold-open': '冷開場', jingle: '品牌 Jingle', 'host-intro': '主持人介紹',
+  'topic-intro': '主題引入', core: '核心內容', 'ad-break': '廣告/互動',
+  summary: '重點摘要', cta: '行動呼籲', preview: '下集預告',
+  // Legacy
+  intro: '開場白', seg: '內容段', outro: '結尾',
+}
 
-const tagLabel = computed(() => TAG_LABELS[props.segment.tag] || '段落')
+const tagLabel = computed(() => props.segment.label || TAG_LABELS[props.segment.tag] || '段落')
 
 const audioEl = ref(null)
 const playing = ref(false)
@@ -122,6 +128,36 @@ function handleUpload(e) {
   padding: 3px 9px;
   border-radius: 6px;
 }
+/* Gold: cold-open, jingle */
+.seg-tag.cold-open,
+.seg-tag.jingle {
+  background: var(--gold-pale);
+  color: var(--gold);
+}
+/* Teal: host-intro, topic-intro */
+.seg-tag.host-intro,
+.seg-tag.topic-intro {
+  background: var(--teal-light);
+  color: var(--teal);
+}
+/* Blue: core */
+.seg-tag.core {
+  background: var(--blue-pale);
+  color: var(--blue);
+}
+/* Purple: ad-break, summary */
+.seg-tag.ad-break,
+.seg-tag.summary {
+  background: var(--purple-pale);
+  color: var(--purple);
+}
+/* Orange: cta, preview */
+.seg-tag.cta,
+.seg-tag.preview {
+  background: var(--orange-pale);
+  color: var(--orange);
+}
+/* Legacy classes */
 .seg-tag.intro {
   background: var(--gold-pale);
   color: var(--gold);

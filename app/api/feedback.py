@@ -16,6 +16,7 @@ from app.db import (
     get_segments_by_script,
     get_titles_by_project,
 )
+from app.api.scripts import STYLE_TO_VARIANT
 from app.llm.factory import get_provider_for_user
 from app.llm.prompt_builder import load_prompt
 from app.models import FeedbackRequest
@@ -77,15 +78,18 @@ async def submit_feedback(
 
             try:
                 provider = await get_provider_for_user(user_id, llm_provider)
+                style_value = project["style"] or "輕鬆閒聊"
+                structure_variant = STYLE_TO_VARIANT.get(style_value, "獨白型")
                 system = load_prompt("system")
                 user_msg = load_prompt(
                     "script_generation",
                     selected_title=selected_title,
                     topic=project["topic"],
                     audience=project["audience"],
-                    style=project["style"] or "輕鬆閒聊",
+                    style=style_value,
                     duration_min=str(project["duration_min"] or 30),
                     host_count=str(project["host_count"] or 1),
+                    structure_variant=structure_variant,
                 )
                 result = await provider.complete(system, user_msg, task="script_generation")
                 segments_data = result.get("segments", [])

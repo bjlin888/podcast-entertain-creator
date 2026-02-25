@@ -31,6 +31,7 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { useFlowStore } from '../../stores/flow'
 import { useToast } from '../../composables/useToast'
 
@@ -38,6 +39,12 @@ const flow = useFlowStore()
 const toast = useToast()
 
 defineEmits(['back-to-list', 'new-episode'])
+
+onMounted(() => {
+  if (!flow.fullScript) {
+    flow.buildFullScript()
+  }
+})
 
 function handleCopy() {
   flow.copyScript()

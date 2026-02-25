@@ -25,6 +25,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["scripts"])
 
+# Map project style to 三層十段 structure variant
+STYLE_TO_VARIANT = {
+    "訪談對話": "訪談型",
+    "知識分享": "獨白型",
+    "深度分析": "獨白型",
+    "幽默搞笑": "獨白型",
+    "輕鬆聊天": "獨白型",
+    "新聞評論": "獨白型",
+}
+
 
 @router.post("/projects/{project_id}/scripts/generate")
 async def generate_script(
@@ -50,15 +60,18 @@ async def generate_script(
 
         try:
             provider = await get_provider_for_user(user_id, llm_provider)
+            style_value = project["style"] or "輕鬆閒聊"
+            structure_variant = STYLE_TO_VARIANT.get(style_value, "獨白型")
             system = load_prompt("system")
             user_msg = load_prompt(
                 "script_generation",
                 selected_title=selected_title,
                 topic=project["topic"],
                 audience=project["audience"],
-                style=project["style"] or "輕鬆閒聊",
+                style=style_value,
                 duration_min=str(project["duration_min"] or 30),
                 host_count=str(project["host_count"] or 1),
+                structure_variant=structure_variant,
             )
             result = await provider.complete(system, user_msg, task="script_generation")
             segments_data = result.get("segments", [])
@@ -171,6 +184,8 @@ async def refine_segment(
                 original_content=segment["content"],
                 feedback=body.content,
                 scores="N/A",
+                segment_type=segment.get("segment_type") or "main",
+                label=segment.get("label") or "",
             )
             result = await provider.complete(system, user_msg, task="script_refinement")
             new_content = result.get("content", segment["content"])

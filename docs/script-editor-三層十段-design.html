@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>腳本編輯器 — 三層十段 Design Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────
+   Design Tokens
+───────────────────────────────────── */
+:root {
+  --orange:       #F4631E;
+  --orange-pale:  #FFE8D6;
+  --teal:         #1A8F8A;
+  --teal-light:   #D8F3F1;
+  --teal-pale:    #EAF9F8;
+  --gold:         #D4A017;
+  --gold-pale:    #FFF8E0;
+  --purple:       #7C5CBF;
+  --purple-pale:  #F0E8FF;
+  --blue:         #2E7DB8;
+  --blue-pale:    #E0F0FF;
+  --ink:          #0F0E0C;
+  --ink-soft:     #1C1A17;
+  --cream:        #FDF6EC;
+  --warm-white:   #FFFBF5;
+  --gray-mid:     #7A7060;
+  --gray-light:   #EAE2D6;
+  --gray-pale:    #F6EFE6;
+  --shadow-card:  0 2px 20px rgba(0,0,0,.08);
+  --radius:       20px;
+  --radius-sm:    12px;
+  --radius-xs:    8px;
+  --font-body:    'Noto Sans TC', sans-serif;
+  --font-display: 'Playfair Display', serif;
+}
+
+/* ─────────────────────────────────────
+   Reset & Base
+───────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font-body);
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────
+   Top Bar
+───────────────────────────────────── */
+.topbar {
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  background: var(--warm-white);
+  border-bottom: 2px solid var(--gray-light);
+  box-shadow: 0 2px 12px rgba(0,0,0,.04);
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+  font-size: 18px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.logo-icon {
+  width: 34px; height: 34px;
+  background: var(--orange);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.flow-nav {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.flow-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-light);
+  background: transparent;
+  color: var(--gray-mid);
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.flow-dot.done { border-color: var(--teal); background: var(--teal); color: #fff; }
+.flow-dot.active { border-color: var(--orange); background: var(--orange); color: #fff; }
+.flow-line { width: 18px; height: 2px; background: var(--gray-light); border-radius: 2px; }
+.flow-line.done { background: var(--teal); }
+.btn-back {
+  padding: 7px 14px;
+  background: var(--gray-pale);
+  border: 1.5px solid var(--gray-light);
+  border-radius: var(--radius-xs);
+  font-size: 12px; font-weight: 700;
+  font-family: var(--font-body);
+  color: var(--gray-mid);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-back:hover { background: var(--gray-light); color: var(--ink); }
+
+/* ─────────────────────────────────────
+   Main Container
+───────────────────────────────────── */
+.flow-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 36px 24px 120px;
+}
+
+/* ─────────────────────────────────────
+   Page Header
+───────────────────────────────────── */
+.page-header {
+  margin-bottom: 8px;
+}
+.page-header h1 {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.3;
+}
+.page-header h1 .icon {
+  font-size: 30px;
+  flex-shrink: 0;
+}
+
+/* Tip Box */
+.tip-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--gold-pale);
+  border: 1.5px solid var(--gold);
+  border-radius: var(--radius-xs);
+  padding: 12px 16px;
+  margin-top: 16px;
+  margin-bottom: 28px;
+}
+.tip-box .tip-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.tip-box p {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.65;
+}
+.tip-box strong {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────
+   Layer Group
+───────────────────────────────────── */
+.layer-group {
+  margin-bottom: 24px;
+}
+.layer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-radius: var(--radius-xs);
+  border-left: 4px solid transparent;
+  margin-bottom: 4px;
+}
+.layer-header h2 {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.layer-header h2 .layer-emoji {
+  font-size: 18px;
+}
+.layer-header .seg-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-mid);
+  background: rgba(255,255,255,.6);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* Layer color variants */
+.layer-header--gold {
+  background: var(--gold-pale);
+  border-left-color: var(--gold);
+}
+.layer-header--gold .seg-count { color: var(--gold); }
+
+.layer-header--teal {
+  background: var(--teal-pale);
+  border-left-color: var(--teal);
+}
+.layer-header--teal .seg-count { color: var(--teal); }
+
+.layer-header--orange {
+  background: var(--orange-pale);
+  border-left-color: var(--orange);
+}
+.layer-header--orange .seg-count { color: var(--orange); }
+
+/* Layer segments container with connecting line */
+.layer-segments {
+  position: relative;
+  padding-left: 26px;
+  margin-left: 16px;
+}
+.layer-segments::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 3px;
+}
+.layer-group--gold .layer-segments::before { background: var(--gold); opacity: .22; }
+.layer-group--teal .layer-segments::before { background: var(--teal); opacity: .22; }
+.layer-group--orange .layer-segments::before { background: var(--orange); opacity: .22; }
+
+/* Connector dots on the line */
+.segment-card {
+  position: relative;
+}
+.segment-card::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  top: 24px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  z-index: 1;
+}
+.layer-group--gold .segment-card::before { background: var(--gold); }
+.layer-group--teal .segment-card::before { background: var(--teal); }
+.layer-group--orange .segment-card::before { background: var(--orange); }
+
+/* ─────────────────────────────────────
+   Segment Card
+───────────────────────────────────── */
+.segment-card {
+  background: var(--warm-white);
+  border: 1.5px solid var(--gray-light);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+}
+.segment-card:last-child {
+  margin-bottom: 0;
+}
+.segment-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.06);
+}
+.segment-card.expanded {
+  border-color: var(--orange);
+  box-shadow: 0 4px 24px rgba(244,99,30,.12);
+}
+
+/* Card header (clickable) */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+.card-header:hover {
+  background: var(--gray-pale);
+}
+.expanded .card-header:hover {
+  background: var(--orange-pale);
+}
+
+/* Segment number */
+.seg-number {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--gray-pale);
+  border: 1.5px solid var(--gray-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 900;
+  color: var(--gray-mid);
+  flex-shrink: 0;
+}
+.expanded .seg-number {
+  background: var(--orange-pale);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* Tag badge */
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  flex-shrink: 0;
+  line-height: 1.6;
+}
+
+/* 5-color tag variants */
+.tag--gold    { background: var(--gold-pale);   color: var(--gold);   border: 1px solid rgba(212,160,23,.2); }
+.tag--teal    { background: var(--teal-pale);   color: var(--teal);   border: 1px solid rgba(26,143,138,.2); }
+.tag--blue    { background: var(--blue-pale);   color: var(--blue);   border: 1px solid rgba(46,125,184,.2); }
+.tag--purple  { background: var(--purple-pale); color: var(--purple); border: 1px solid rgba(124,92,191,.2); }
+.tag--orange  { background: var(--orange-pale); color: var(--orange); border: 1px solid rgba(244,99,30,.2); }
+
+/* Card label & duration */
+.card-info {
+  flex: 1;
+  min-width: 0;
+}
+.card-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-duration {
+  font-size: 12px;
+  color: var(--gray-mid);
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.card-duration .clock-icon {
+  font-size: 11px;
+}
+
+/* Expand/collapse chevron */
+.card-chevron {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform .25s ease;
+}
+.card-chevron svg {
+  width: 16px; height: 16px;
+  stroke: var(--gray-mid);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.expanded .card-chevron {
+  transform: rotate(180deg);
+}
+.expanded .card-chevron svg {
+  stroke: var(--orange);
+}
+
+/* ─────────────────────────────────────
+   Card Body (expanded content)
+───────────────────────────────────── */
+.card-body {
+  display: none;
+  padding: 0 18px 18px;
+  animation: slideDown .25s ease;
+}
+.expanded .card-body {
+  display: block;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Divider */
+.card-body-divider {
+  height: 1px;
+  background: var(--gray-light);
+  margin-bottom: 16px;
+}
+
+/* Script content */
+.script-content {
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--ink);
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--cream);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--gray-light);
+}
+.script-content p {
+  margin-bottom: 10px;
+}
+.script-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Cue markers inline */
+.cue-inline {
+  display: inline;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.cue-inline--pause {
+  background: var(--purple-pale);
+  color: var(--purple);
+}
+.cue-inline--bgm {
+  background: var(--teal-pale);
+  color: var(--teal);
+}
+.cue-inline--sfx {
+  background: var(--blue-pale);
+  color: var(--blue);
+}
+
+/* Cue badges row */
+.cue-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.cue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--gray-pale);
+  color: var(--gray-mid);
+  border: 1px solid var(--gray-light);
+}
+.cue-badge .cue-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cue-dot--bgm    { background: var(--teal); }
+.cue-dot--pause  { background: var(--purple); }
+.cue-dot--sfx    { background: var(--blue); }
+.cue-dot--effect { background: var(--gold); }
+
+/* Action buttons */
+.card-actions {
+  display: flex;
+  gap: 10px;
+}
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all .18s;
+  border: none;
+}
+.btn-action--edit {
+  background: var(--orange);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(244,99,30,.25);
+}
+.btn-action--edit:hover {
+  background: #FF7A3A;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(244,99,30,.35);
+}
+.btn-action--listen {
+  background: var(--teal-pale);
+  color: var(--teal);
+  border: 1.5px solid var(--teal-light);
+}
+.btn-action--listen:hover {
+  background: var(--teal-light);
+  transform: translateY(-1px);
+}
+
+/* ─────────────────────────────────────
+   Bottom Action Bar
+───────────────────────────────────── */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--warm-white);
+  border-top: 2px solid var(--gray-light);
+  box-shadow: 0 -4px 20px rgba(0,0,0,.06);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bottom-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.total-duration {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.total-duration .dur-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--orange);
+}
+.total-duration .dur-unit {
+  font-size: 12px;
+  color: var(--gray-mid);
+  font-weight: 500;
+}
+.bottom-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-xs);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  background: var(--gray-pale);
+  border: 1.5px solid var(--gray-light);
+  color: var(--gray-mid);
+  cursor: pointer;
+  transition: all .18s;
+}
+.btn-secondary:hover {
+  background: var(--gray-light);
+  color: var(--ink);
+}
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: var(--radius-xs);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  background: var(--orange);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: all .22s;
+  box-shadow: 0 4px 20px rgba(244,99,30,.32);
+}
+.btn-primary:hover {
+  background: #FF7A3A;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(244,99,30,.45);
+}
+
+/* ─────────────────────────────────────
+   Responsive
+───────────────────────────────────── */
+@media (max-width: 640px) {
+  .flow-main { padding: 24px 16px 140px; }
+  .page-header h1 { font-size: 22px; }
+  .layer-segments { padding-left: 20px; margin-left: 12px; }
+  .card-header { padding: 12px 14px; gap: 8px; }
+  .bottom-bar { padding: 12px 16px; }
+  .btn-primary, .btn-secondary { padding: 10px 16px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════
+     TOP BAR
+════════════════════════════════════ -->
+<header class="topbar">
+  <a class="logo" href="#">
+    <span class="logo-icon">🎙️</span>
+    Podcast 創作助手
+  </a>
+  <nav class="flow-nav">
+    <span class="flow-dot done">1</span>
+    <span class="flow-line done"></span>
+    <span class="flow-dot done">2</span>
+    <span class="flow-line done"></span>
+    <span class="flow-dot done">3</span>
+    <span class="flow-line done"></span>
+    <span class="flow-dot active">4</span>
+    <span class="flow-line"></span>
+    <span class="flow-dot">5</span>
+  </nav>
+  <div class="topbar-right">
+    <button class="btn-back">← 返回控制台</button>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════ -->
+<main class="flow-main">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1><span class="icon">📄</span> 你的完整腳本來了！</h1>
+  </div>
+
+  <div class="tip-box">
+    <span class="tip-icon">💡</span>
+    <p>腳本已依照 <strong>三層十段</strong> 架構生成。點擊任一段落可展開查看完整內容，並可針對個別段落進行修改或試聽。建議從頭到尾瀏覽一遍，確認整體節奏與邏輯。</p>
+  </div>
+
+  <!-- ──────────────────────────────────
+       LAYER 1: 開場 (Gold)
+  ────────────────────────────────── -->
+  <div class="layer-group layer-group--gold">
+    <div class="layer-header layer-header--gold">
+      <h2><span class="layer-emoji">🌅</span> 第一層：開場</h2>
+      <span class="seg-count">3 段</span>
+    </div>
+    <div class="layer-segments">
+
+      <!-- Segment 1: cold_open (EXPANDED) -->
+      <div class="segment-card expanded" data-segment="1">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">1</span>
+          <span class="tag-badge tag--gold">冷開場</span>
+          <div class="card-info">
+            <div class="card-label">用一個問題抓住聽眾注意力</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 30 秒
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p><span class="cue-inline cue-inline--bgm">[BGM fade in]</span></p>
+            <p>你有沒有想過，為什麼有些 Podcast 節目你一聽就停不下來，但有些明明主題很有趣，卻讓你三分鐘內就想滑掉？</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓 1.5 秒)</span></p>
+            <p>今天這一集，我們要聊的就是這個——讓聽眾「黏住」的秘密。不是什麼高深的心理學理論，而是每個創作者都能馬上用的三個技巧。</p>
+            <p><span class="cue-inline cue-inline--bgm">[BGM 音量降低]</span></p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--bgm"></span> BGM fade in</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓 1.5 秒</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--bgm"></span> BGM 音量降低</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 2: jingle -->
+      <div class="segment-card" data-segment="2">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">2</span>
+          <span class="tag-badge tag--gold">品牌 Jingle</span>
+          <div class="card-info">
+            <div class="card-label">節目品牌識別音效</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 10 秒
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p><span class="cue-inline cue-inline--sfx">[品牌 Jingle 播放]</span></p>
+            <p>「創作者日常——陪你從零開始，打造有影響力的聲音。」</p>
+            <p><span class="cue-inline cue-inline--sfx">[Jingle 結束，短暫靜音]</span></p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--sfx"></span> 品牌 Jingle</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--effect"></span> 短暫靜音</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 3: host_intro -->
+      <div class="segment-card" data-segment="3">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">3</span>
+          <span class="tag-badge tag--teal">主持人介紹</span>
+          <div class="card-info">
+            <div class="card-label">自我介紹與建立信任感</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 45 秒
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>嗨大家好，歡迎回到「創作者日常」！我是你的主持人小安。</p>
+            <p>如果你是第一次收聽，簡單自我介紹一下——我是一個做了五年 Podcast 的創作者，目前經營三檔節目，累積超過兩百萬次下載。</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>但更重要的是，我踩過的坑大概比你想像的還多，所以今天分享的都是真實經驗。</p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────
+       LAYER 2: 主體內容 (Teal)
+  ────────────────────────────────── -->
+  <div class="layer-group layer-group--teal">
+    <div class="layer-header layer-header--teal">
+      <h2><span class="layer-emoji">🎯</span> 第二層：主體內容</h2>
+      <span class="seg-count">4 段</span>
+    </div>
+    <div class="layer-segments">
+
+      <!-- Segment 4: topic_intro -->
+      <div class="segment-card" data-segment="4">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">4</span>
+          <span class="tag-badge tag--teal">主題引入</span>
+          <div class="card-info">
+            <div class="card-label">揭示主題核心與預告架構</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 1 分 30 秒
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>好，我們直接進入今天的主題——<strong>如何讓聽眾黏住你的節目</strong>。</p>
+            <p>我把這個主題拆成三個面向來聊：第一，開場的前 30 秒怎麼設計；第二，內容中段怎麼維持注意力；第三，結尾怎麼讓人期待下一集。</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>每個面向我都會給你一個具體可執行的技巧，聽完馬上就能用在下一集。</p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 5: core_1 -->
+      <div class="segment-card" data-segment="5">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">5</span>
+          <span class="tag-badge tag--blue">核心內容</span>
+          <div class="card-info">
+            <div class="card-label">技巧一：開場 30 秒的黃金公式</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 5 分鐘
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>第一個技巧，我稱它為「反直覺開場法」。</p>
+            <p>大部分的 Podcast 新手會用「歡迎收聽、我是誰誰誰」來開場，但數據告訴我們，聽眾在前 30 秒的離開率最高。</p>
+            <p><span class="cue-inline cue-inline--bgm">[BGM 輕微音效]</span></p>
+            <p>所以，你應該做的是——直接拋出一個讓人好奇的問題、一個違反常識的陳述，或是一小段故事的「高潮片段」。讓人的大腦來不及判斷就已經被吸住了。</p>
+            <p>舉個例子，與其說「今天我們來聊投資理財」，不如說「我去年把全部積蓄放進一檔股票，然後發生了一件事...」</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓 2 秒)</span></p>
+            <p>看到差別了嗎？後者製造了一個「資訊缺口」，聽眾的大腦會自動想要填補這個缺口。</p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--bgm"></span> BGM 輕微音效</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓 2 秒</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 6: core_2 -->
+      <div class="segment-card" data-segment="6">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">6</span>
+          <span class="tag-badge tag--blue">核心內容</span>
+          <div class="card-info">
+            <div class="card-label">技巧二：中段的注意力拉回術</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 5 分鐘
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>第二個技巧是「中段拉回術」。</p>
+            <p>節目中段是聽眾最容易分心的地方。你想想，他們可能一邊聽一邊開車、一邊做家事。所以每隔三到五分鐘，你需要一個「重新吸引注意力」的手段。</p>
+            <p><span class="cue-inline cue-inline--sfx">[SFX: 轉場音效]</span></p>
+            <p>方法有三種：第一，突然改變語速或音量；第二，丟出一個意想不到的數據或事實；第三，用「接下來這段很重要」這類的預告語。</p>
+            <p>我自己最常用的是第二種——突然丟一個數據。比如：「根據 Edison Research 的調查，80% 的 Podcast 聽眾會聽完整集。」</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>等等，80%？那為什麼我們還要擔心？因為那 20% 往往是你最想轉化成忠實聽眾的人。</p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--sfx"></span> 轉場音效</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 7: ad_break -->
+      <div class="segment-card" data-segment="7">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">7</span>
+          <span class="tag-badge tag--purple">廣告/互動</span>
+          <div class="card-info">
+            <div class="card-label">中場互動與贊助訊息</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 1 分鐘
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p><span class="cue-inline cue-inline--sfx">[SFX: 輕快轉場音效]</span></p>
+            <p>在進入最後一個技巧之前，快速提醒一下——如果你覺得今天的內容有幫助，花三秒鐘幫我按下追蹤，這對獨立創作者來說真的很重要。</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>另外，今天的節目感謝「聲音工坊」贊助播出。聲音工坊提供專業的 Podcast 後製服務，用折扣碼 CREATOR20 可以享八折優惠，連結我放在節目資訊欄。</p>
+            <p><span class="cue-inline cue-inline--sfx">[SFX: 轉場音效]</span></p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--sfx"></span> 輕快轉場音效</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--sfx"></span> 轉場音效</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────
+       LAYER 3: 收尾 (Orange)
+  ────────────────────────────────── -->
+  <div class="layer-group layer-group--orange">
+    <div class="layer-header layer-header--orange">
+      <h2><span class="layer-emoji">🎬</span> 第三層：收尾</h2>
+      <span class="seg-count">3 段</span>
+    </div>
+    <div class="layer-segments">
+
+      <!-- Segment 8: summary -->
+      <div class="segment-card" data-segment="8">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">8</span>
+          <span class="tag-badge tag--purple">重點摘要</span>
+          <div class="card-info">
+            <div class="card-label">三個技巧快速回顧</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 1 分鐘
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>好的，我們快速回顧一下今天的三個技巧：</p>
+            <p><strong>第一</strong>，開場用反直覺的方式製造資訊缺口，讓聽眾在前 30 秒就被吸住。</p>
+            <p><strong>第二</strong>，中段每三到五分鐘用一個「拉回手段」重新吸引注意力——突然的數據、改變語速、或預告語。</p>
+            <p><strong>第三</strong>，結尾留一個懸念，用「未完成效應」讓聽眾期待下一集。</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>這三個技巧組合起來，就是一個完整的「聽眾留存系統」。</p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 9: cta -->
+      <div class="segment-card" data-segment="9">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">9</span>
+          <span class="tag-badge tag--orange">行動呼籲</span>
+          <div class="card-info">
+            <div class="card-label">訂閱、分享與社群互動</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 30 秒
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>如果你覺得今天這集有收穫，最簡單的支持方式就是幫我分享給一位也在做 Podcast 的朋友。</p>
+            <p>另外，我在 IG 上開了一個「創作者日常」的社群，會不定期分享一些節目裡沒講到的小技巧。帳號是 @creator.daily，連結在資訊欄。</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>歡迎來跟我互動，告訴我你試了哪個技巧、效果怎麼樣。</p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segment 10: preview -->
+      <div class="segment-card" data-segment="10">
+        <div class="card-header" onclick="toggleCard(this)">
+          <span class="seg-number">10</span>
+          <span class="tag-badge tag--orange">下集預告</span>
+          <div class="card-info">
+            <div class="card-label">預告下集主題，製造期待感</div>
+            <div class="card-duration">
+              <span class="clock-icon">⏱</span> 約 30 秒
+            </div>
+          </div>
+          <div class="card-chevron">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-body-divider"></div>
+          <div class="script-content">
+            <p>下一集，我們要聊一個更進階的主題——<strong>如何用「聲音設計」提升節目的專業感</strong>。</p>
+            <p>我會分享我花了三年才搞懂的 EQ 調整技巧，還有一個免費工具可以讓你的聲音聽起來像專業錄音室出品。</p>
+            <p><span class="cue-inline cue-inline--pause">(停頓)</span></p>
+            <p>保證你聽完會想馬上重錄下一集。我們下週見！</p>
+            <p><span class="cue-inline cue-inline--bgm">[BGM fade out]</span></p>
+          </div>
+          <div class="cue-badges">
+            <span class="cue-badge"><span class="cue-dot cue-dot--pause"></span> 停頓</span>
+            <span class="cue-badge"><span class="cue-dot cue-dot--bgm"></span> BGM fade out</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-action btn-action--edit">✏️ 修改</button>
+            <button class="btn-action btn-action--listen">🎧 試聽</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- ════════════════════════════════════
+     BOTTOM ACTION BAR
+════════════════════════════════════ -->
+<div class="bottom-bar">
+  <div class="bottom-bar-left">
+    <div class="total-duration">
+      <span>預估總時長</span>
+      <span class="dur-value">16</span>
+      <span class="dur-unit">分 15 秒</span>
+    </div>
+  </div>
+  <div class="bottom-bar-right">
+    <button class="btn-secondary">🔄 重新生成</button>
+    <button class="btn-primary">🎧 生成完整音檔 →</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════ -->
+<script>
+function toggleCard(headerEl) {
+  const card = headerEl.closest('.segment-card');
+  const wasExpanded = card.classList.contains('expanded');
+
+  // Toggle this card
+  card.classList.toggle('expanded');
+
+  // If expanding, scroll into view smoothly after a short delay for animation
+  if (!wasExpanded) {
+    setTimeout(() => {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+}
+</script>
+
+</body>
+</html>

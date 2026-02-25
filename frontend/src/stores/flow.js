@@ -23,6 +23,10 @@ export const useFlowStore = defineStore('flow', () => {
   const segments = ref([])
   const scriptId = ref(null)
 
+  // Generation tracking — to skip regeneration when input hasn't changed
+  const lastGeneratedTopic = ref('')
+  const lastGeneratedTitleId = ref(null)
+
   // Step 4: Feedback
   const ratings = ref({ naturalness: 0, pacing: 0, style: 0 })
   const feedbackText = ref('')
@@ -107,6 +111,12 @@ export const useFlowStore = defineStore('flow', () => {
       } catch {
         // Audio data not available, continue without it
       }
+    }
+
+    // Initialize generation tracking for loaded projects
+    if (titles.value.length > 0) lastGeneratedTopic.value = topic.value
+    if (segments.value.length > 0 && selectedTitleIndex.value >= 0) {
+      lastGeneratedTitleId.value = titles.value[selectedTitleIndex.value]?.id || null
     }
 
     // Infer step from data availability
@@ -201,12 +211,14 @@ export const useFlowStore = defineStore('flow', () => {
       const data = await api.post(`/api/v1/projects/${projectId.value}/titles/generate`, {})
       titles.value = (data.titles || []).map(mapTitle)
       selectedTitleIndex.value = -1
+      lastGeneratedTopic.value = topic.value
       currentStep.value = 2
       saveToEpisodeStore()
     } catch {
       // Fallback: demo titles
       titles.value = getDemoTitles()
       selectedTitleIndex.value = -1
+      lastGeneratedTopic.value = topic.value
       currentStep.value = 2
       saveToEpisodeStore()
     } finally {
@@ -252,10 +264,12 @@ export const useFlowStore = defineStore('flow', () => {
       const data = await api.post(`/api/v1/projects/${projectId.value}/scripts/generate`, {})
       scriptId.value = data.script?.script_id || null
       segments.value = (data.segments || []).map(mapSegment)
+      lastGeneratedTitleId.value = titles.value[selectedTitleIndex.value]?.id || null
       currentStep.value = 3
       saveToEpisodeStore()
     } catch {
       segments.value = getDemoSegments()
+      lastGeneratedTitleId.value = titles.value[selectedTitleIndex.value]?.id || null
       currentStep.value = 3
       saveToEpisodeStore()
     } finally {
@@ -474,10 +488,23 @@ export const useFlowStore = defineStore('flow', () => {
     selectedTitleIndex.value = -1
     segments.value = []
     scriptId.value = null
+    lastGeneratedTopic.value = ''
+    lastGeneratedTitleId.value = null
     ratings.value = { naturalness: 0, pacing: 0, style: 0 }
     feedbackText.value = ''
     fullScript.value = ''
     audioFiles.value = []
+  }
+
+  // ─── Skip-generation checks ─── //
+  function canSkipTitleGeneration() {
+    return titles.value.length > 0 && topic.value === lastGeneratedTopic.value
+  }
+
+  function canSkipScriptGeneration() {
+    if (segments.value.length === 0) return false
+    const currentTitleId = titles.value[selectedTitleIndex.value]?.id || null
+    return currentTitleId != null && currentTitleId === lastGeneratedTitleId.value
   }
 
   // ─── Mapping helpers ─── //
@@ -515,19 +542,45 @@ export const useFlowStore = defineStore('flow', () => {
     }
   }
 
-  // Map backend segment to frontend format
-  const segTypeMap = { opening: 'intro', main: 'seg', closing: 'outro' }
-  const segLabelMap = { opening: '開場白', main: '內容段', closing: '結尾' }
+  // Map segment_type to layer (opening / main / closing)
+  const segLayerMap = {
+    cold_open: 'opening', jingle: 'opening', host_intro: 'opening',
+    topic_intro: 'main', core_1: 'main', core_2: 'main', ad_break: 'main',
+    summary: 'closing', cta: 'closing', preview: 'closing',
+    // Legacy fallbacks
+    opening: 'opening', main: 'main', closing: 'closing',
+  }
+
+  // Map segment_type to CSS tag class
+  const segTagMap = {
+    cold_open: 'cold-open', jingle: 'jingle', host_intro: 'host-intro',
+    topic_intro: 'topic-intro', core_1: 'core', core_2: 'core', ad_break: 'ad-break',
+    summary: 'summary', cta: 'cta', preview: 'preview',
+    // Legacy fallbacks
+    opening: 'intro', main: 'seg', closing: 'outro',
+  }
+
+  // Default Chinese labels for all 10 types
+  const segDefaultLabelMap = {
+    cold_open: '冷開場', jingle: '品牌 Jingle', host_intro: '主持人介紹',
+    topic_intro: '主題引入', core_1: '核心內容一', core_2: '核心內容二', ad_break: '廣告/互動',
+    summary: '重點摘要', cta: '行動呼籲', preview: '下集預告',
+    // Legacy fallbacks
+    opening: '開場白', main: '內容段', closing: '結尾',
+  }
 
   function mapSegment(s) {
     if (!s) return s
+    const segType = s.segment_type || 'main'
     return {
       id: s.segment_id || s.id,
-      tag: segTypeMap[s.segment_type] || s.tag || 'seg',
-      label: segLabelMap[s.segment_type] || s.label || s.segment_type || '',
+      segmentType: segType,
+      tag: segTagMap[segType] || s.tag || 'seg',
+      label: s.label || segDefaultLabelMap[segType] || s.segment_type || '',
+      layer: segLayerMap[segType] || 'main',
       content: s.content || '',
       cues: typeof s.cues === 'string' ? JSON.parse(s.cues || '[]') : (s.cues || []),
-      dur: s.dur || '',
+      dur: s.estimated_duration || s.dur || '',
       audioUrl: s.audioUrl || null,
       hostAudioUrl: s.hostAudioUrl || null,
       sampleId: s.sampleId || null,
@@ -549,24 +602,49 @@ export const useFlowStore = defineStore('flow', () => {
   function getDemoSegments() {
     return [
       {
-        id: 'INTRO', label: '開場白', tag: 'intro', dur: '約 30 秒',
-        content: '嗨大家好，歡迎回來我的 Podcast！\n\n（停頓）\n\n你有沒有這種感覺？身邊的人都在說 AI、用 AI，但打開了一堆工具，反而覺得更混亂？今天這集，我們就來好好說清楚。',
-        cues: ['（停頓）', '【BGM淡入】'],
+        id: 'COLD_OPEN', segmentType: 'cold_open', label: '冷開場：驚人數據', tag: 'cold-open', layer: 'opening', dur: '約 15 秒',
+        content: '你知道嗎？有 78% 的人說自己在用 AI，但其中只有 12% 真的用對了方法。今天這集，我們要來揭開這個巨大的落差。',
+        cues: ['[BGM fade in]'],
       },
       {
-        id: 'SEGMENT_1', label: '為什麼現在要聊 AI？', tag: 'seg', dur: '約 5 分鐘',
-        content: '先說說我自己的故事。（加強語氣）三個月前，我一天花在整理資料上的時間超過兩個小時。但現在，同樣的事情只要 15 分鐘。\n\n這不是魔法，是找到了適合自己的 AI 工作流程。',
+        id: 'JINGLE', segmentType: 'jingle', label: '品牌 Jingle', tag: 'jingle', layer: 'opening', dur: '約 5 秒',
+        content: '[品牌開場音樂]',
+        cues: ['[Jingle 播放]'],
+      },
+      {
+        id: 'HOST_INTRO', segmentType: 'host_intro', label: '主持人介紹 + 價值承諾', tag: 'host-intro', layer: 'opening', dur: '約 30 秒',
+        content: '嗨大家好，我是你的主持人！歡迎回到我的 Podcast。（停頓）今天這集聽完，你會知道怎麼用最少的工具，做到最大的效率提升。我們開始吧！',
+        cues: ['（停頓）', '[BGM 淡出]'],
+      },
+      {
+        id: 'TOPIC_INTRO', segmentType: 'topic_intro', label: '主題引入：AI 工具的現況', tag: 'topic-intro', layer: 'main', dur: '約 2 分鐘',
+        content: '先來聊聊背景。（加強語氣）過去一年，AI 工具的數量爆炸性成長，光是生產力工具就超過 500 個。但問題來了——選擇太多，反而讓人不知從何下手。',
         cues: ['（加強語氣）', '（停頓）'],
       },
       {
-        id: 'SEGMENT_2', label: '5 個推薦工具介紹', tag: 'seg', dur: '約 15 分鐘',
-        content: '好，直接進入正題。第一個工具是 Claude，它是我目前最常用的 AI 助理。\n\n（停頓）\n\n為什麼選 Claude？因為它在理解中文、回覆台灣口語方面表現特別好。',
+        id: 'CORE_1', segmentType: 'core_1', label: '核心一：我的 AI 工作流實測', tag: 'core', layer: 'main', dur: '約 8 分鐘',
+        content: '先說說我自己的故事。三個月前，我一天花在整理資料上的時間超過兩個小時。但現在，同樣的事情只要 15 分鐘。\n\n（停頓）\n\n這不是魔法，是找到了適合自己的 AI 工作流程。我來一個一個跟你介紹。',
+        cues: ['（停頓）', '（加強語氣）'],
+      },
+      {
+        id: 'CORE_2', segmentType: 'core_2', label: '核心二：5 個推薦工具深度介紹', tag: 'core', layer: 'main', dur: '約 10 分鐘',
+        content: '好，直接進入正題。第一個工具是 Claude，它是我目前最常用的 AI 助理。\n\n（停頓）\n\n為什麼選 Claude？因為它在理解中文、回覆台灣口語方面表現特別好。接下來第二個工具⋯',
         cues: ['（停頓）'],
       },
       {
-        id: 'OUTRO', label: '結尾與行動呼籲', tag: 'outro', dur: '約 1 分鐘',
-        content: '今天跟大家分享了我最愛用的 5 個 AI 工具。希望你不只是覺得「有趣」，而是今天就去試試！\n\n（停頓）\n\n記得訂閱，我們下集見！',
-        cues: ['（停頓）', '（加強語氣）'],
+        id: 'SUMMARY', segmentType: 'summary', label: '重點摘要', tag: 'summary', layer: 'closing', dur: '約 1 分鐘',
+        content: '好，來幫大家快速複習一下。今天介紹了 5 個我每天都在用的 AI 工具，分別是⋯（停頓）記住，重點不是工具多，而是找到適合你的工作流。',
+        cues: ['（停頓）'],
+      },
+      {
+        id: 'CTA', segmentType: 'cta', label: '行動呼籲', tag: 'cta', layer: 'closing', dur: '約 20 秒',
+        content: '如果今天的內容對你有幫助，請幫我按下訂閱，也歡迎留言告訴我你最想試哪個工具！（加強語氣）你的一個訂閱，就是對我最大的支持。',
+        cues: ['（加強語氣）'],
+      },
+      {
+        id: 'PREVIEW', segmentType: 'preview', label: '下集預告', tag: 'preview', layer: 'closing', dur: '約 15 秒',
+        content: '下一集，我要跟大家分享一個更進階的主題——怎麼用 AI 自動化你的整個內容產出流程。（停頓）我們下集見！\n\n[片尾音樂]',
+        cues: ['（停頓）', '[片尾音樂]'],
       },
     ]
   }
@@ -612,5 +690,7 @@ export const useFlowStore = defineStore('flow', () => {
     copyScript,
     downloadScript,
     reset,
+    canSkipTitleGeneration,
+    canSkipScriptGeneration,
   }
 })
