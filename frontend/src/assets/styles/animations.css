@@ -1,0 +1,81 @@
+/* ─────────────────────────────────────
+   Keyframe Animations
+───────────────────────────────────── */
+
+/* Rise in — general entrance */
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bobble — floating icon */
+@keyframes bobble {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+/* Dot pulse — draft indicator */
+@keyframes dotpulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(255,255,255,.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(244,99,30,.18);
+  }
+}
+
+/* Spin — loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Slide up — bottom sheet */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Pop in — center modal */
+@keyframes popIn {
+  from {
+    transform: scale(.93);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Utility animation classes */
+.anim-rise {
+  animation: riseIn .3s ease;
+}
+.anim-bobble {
+  animation: bobble 2.4s ease infinite;
+}
+.anim-spin {
+  animation: spin .8s linear infinite;
+}
+.anim-slide-up {
+  animation: slideUp .3s cubic-bezier(.4,0,.2,1);
+}
+.anim-pop {
+  animation: popIn .24s cubic-bezier(.4,0,.2,1);
+}

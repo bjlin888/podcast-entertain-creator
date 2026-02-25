@@ -1,31 +1,19 @@
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
-
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import (
-    AsyncApiClient,
-    AsyncMessagingApi,
-    Configuration,
-)
-from linebot.v3.webhook import WebhookParser
 
 from app.config import settings
-from app.db import get_db, init_db, upsert_user, get_or_create_session, update_session
-from app.state_machine import process_event
-
-import app.handlers  # noqa: F401 — trigger handler registration
+from app.db import init_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-parser = WebhookParser(channel_secret=settings.line_channel_secret)
-configuration = Configuration(access_token=settings.line_channel_access_token)
 
 
 @asynccontextmanager
@@ -38,65 +26,61 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title="Podcast 創作助手 API", lifespan=lifespan)
+
+# CORS from environment variable
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-User-Id"],
+)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    user_id = request.headers.get("X-User-Id", "-")
+    response = await call_next(request)
+    ms = (time.time() - start) * 1000
+    logger.info(
+        "%s %s user=%s status=%d %.0fms",
+        request.method,
+        request.url.path,
+        user_id[:8],
+        response.status_code,
+        ms,
+    )
+    return response
+
+
+# Mount API routers
+from app.api.projects import router as projects_router
+from app.api.titles import router as titles_router
+from app.api.scripts import router as scripts_router
+from app.api.tts import router as tts_router
+from app.api.feedback import router as feedback_router
+from app.api.export import router as export_router
+
+app.include_router(projects_router, prefix="/api/v1")
+app.include_router(titles_router, prefix="/api/v1")
+app.include_router(scripts_router, prefix="/api/v1")
+app.include_router(tts_router, prefix="/api/v1")
+app.include_router(feedback_router, prefix="/api/v1")
+app.include_router(export_router, prefix="/api/v1")
 
 # Serve TTS audio files
 _audio_dir = Path("data/audio")
 _audio_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
 
+# Serve frontend in production
+_frontend_dist = Path("frontend/dist")
+if _frontend_dist.is_dir():
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
-
-
-@app.post("/callback")
-async def callback(request: Request):
-    signature = request.headers.get("X-Line-Signature", "")
-    body = (await request.body()).decode("utf-8")
-    logger.info("Webhook received, body length=%d", len(body))
-    logger.debug("Webhook body: %s", body[:500])
-
-    try:
-        events = parser.parse(body, signature)
-    except InvalidSignatureError:
-        logger.warning("Invalid signature: %s", signature)
-        raise HTTPException(status_code=400, detail="Invalid signature")
-
-    logger.info("Parsed %d event(s)", len(events))
-
-    for event in events:
-        event_type = type(event).__name__
-        user_id = getattr(event.source, "user_id", None)
-        logger.info("Event: type=%s, user_id=%s", event_type, user_id)
-        try:
-            await _handle_event(event)
-        except Exception:
-            logger.exception("Error handling event: %s", event_type)
-
-    return "OK"
-
-
-async def _handle_event(event) -> None:
-    user_id = getattr(event.source, "user_id", None)
-    if not user_id:
-        logger.warning("Event has no user_id, skipping: %s", type(event).__name__)
-        return
-
-    async with get_db() as db:
-        await upsert_user(db, user_id, display_name="User")
-        session = await get_or_create_session(db, user_id)
-        logger.info(
-            "Session: state=%s, project_id=%s",
-            session["state"],
-            session.get("project_id"),
-        )
-
-        async with AsyncApiClient(configuration) as api_client:
-            api = AsyncMessagingApi(api_client)
-            next_state = await process_event(event, session, db, api)
-            logger.info("State transition: %s → %s", session["state"], next_state.value)
-            await update_session(db, session["session_id"], state=next_state.value)
-
-

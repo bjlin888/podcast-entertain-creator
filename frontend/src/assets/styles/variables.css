@@ -1,0 +1,38 @@
+/* ─────────────────────────────────────
+   Design Tokens — Warm Creative Studio
+───────────────────────────────────── */
+:root {
+  /* Primary */
+  --orange:       #F4631E;
+  --orange-pale:  #FFE8D6;
+
+  /* Accent */
+  --teal:         #1A8F8A;
+  --teal-light:   #D8F3F1;
+  --teal-pale:    #EAF9F8;
+
+  /* Highlight */
+  --gold:         #D4A017;
+  --gold-pale:    #FFF8E0;
+
+  /* Neutrals */
+  --ink:          #0F0E0C;
+  --ink-soft:     #1C1A17;
+  --cream:        #FDF6EC;
+  --warm-white:   #FFFBF5;
+  --gray-mid:     #7A7060;
+  --gray-light:   #EAE2D6;
+  --gray-pale:    #F6EFE6;
+
+  /* Elevations */
+  --shadow-card:  0 2px 20px rgba(0,0,0,.08);
+
+  /* Radii */
+  --radius:       20px;
+  --radius-sm:    12px;
+  --radius-xs:    8px;
+
+  /* Fonts */
+  --font-body:    'Noto Sans TC', sans-serif;
+  --font-display: 'Playfair Display', serif;
+}

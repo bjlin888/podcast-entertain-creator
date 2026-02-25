@@ -41,6 +41,9 @@ def text_to_ssml(text: str) -> str:
         text,
     )
 
+    # Catch-all: strip remaining (中文cue) patterns not handled above
+    text = re.sub(r"\([^()]*[\u4e00-\u9fff][^()]*\)", "", text)
+
     # Clean up extra whitespace
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
 

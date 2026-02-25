@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
 import aiosqlite
 
-from app.models import BotState
+logger = logging.getLogger(__name__)
 
 _db_path: str = "data/podcast.db"
 
@@ -28,6 +29,10 @@ _TABLES: list[str] = [
         style TEXT,
         host_count INTEGER DEFAULT 1,
         llm_provider TEXT,
+        status TEXT DEFAULT 'draft',
+        step INTEGER DEFAULT 1,
+        progress INTEGER DEFAULT 0,
+        cover_index INTEGER DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
     """,
@@ -91,10 +96,17 @@ _TABLES: list[str] = [
         tts_voice TEXT,
         tts_speed REAL DEFAULT 1.0,
         tts_pitch REAL DEFAULT 0.0,
+        tts_provider TEXT DEFAULT 'gemini',
         host_audio_url TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
     """,
+]
+
+
+_MIGRATIONS: list[str] = [
+    # Add tts_provider column to voice_samples (for existing databases)
+    """ALTER TABLE voice_samples ADD COLUMN tts_provider TEXT DEFAULT 'gemini'""",
 ]
 
 
@@ -108,6 +120,12 @@ async def init_db(db_path: str | None = None) -> None:
     async with get_db() as db:
         for ddl in _TABLES:
             await db.execute(ddl)
+        for migration in _MIGRATIONS:
+            try:
+                await db.execute(migration)
+            except Exception as e:
+                if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
+                    logger.warning("Migration skipped: %s", e)
 
 
 @asynccontextmanager
@@ -143,6 +161,20 @@ async def get_user(db: aiosqlite.Connection, user_id: str) -> dict | None:
     return dict(row) if row else None
 
 
+async def get_user_or_create(db: aiosqlite.Connection, user_id: str) -> dict:
+    """Get an existing user or auto-create from UUID."""
+    user = await get_user(db, user_id)
+    if user:
+        return user
+    await db.execute(
+        "INSERT INTO users (user_id, display_name) VALUES (?, ?)",
+        (user_id, f"User-{user_id[:8]}"),
+    )
+    cursor = await db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    row = await cursor.fetchone()
+    return dict(row)
+
+
 # -- Session CRUD ------------------------------------------------------------
 
 _SESSION_FIELDS = {"state", "llm_provider", "project_id", "context"}
@@ -160,20 +192,20 @@ async def get_or_create_session(db: aiosqlite.Connection, user_id: str) -> dict:
     session_id = str(uuid4())
     await db.execute(
         "INSERT INTO sessions (session_id, user_id, state, context) VALUES (?, ?, ?, ?)",
-        (session_id, user_id, BotState.IDLE.value, "{}"),
+        (session_id, user_id, "IDLE", "{}"),
     )
     return {
         "session_id": session_id,
         "user_id": user_id,
         "project_id": None,
-        "state": BotState.IDLE.value,
+        "state": "IDLE",
         "llm_provider": None,
         "context": "{}",
         "updated_at": None,
     }
 
 
-# ── Project CRUD ───────────────────────────────────────────
+# -- Project CRUD -----------------------------------------------------------
 
 
 async def create_project(
@@ -185,13 +217,14 @@ async def create_project(
     style: str,
     host_count: int,
     llm_provider: str,
+    cover_index: int = 0,
 ) -> str:
     project_id = str(uuid4())
     await db.execute(
         """INSERT INTO projects
-           (project_id, user_id, topic, audience, duration_min, style, host_count, llm_provider)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (project_id, user_id, topic, audience, duration_min, style, host_count, llm_provider),
+           (project_id, user_id, topic, audience, duration_min, style, host_count, llm_provider, cover_index)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (project_id, user_id, topic, audience, duration_min, style, host_count, llm_provider, cover_index),
     )
     return project_id
 
@@ -202,7 +235,70 @@ async def get_project(db: aiosqlite.Connection, project_id: str) -> dict | None:
     return dict(row) if row else None
 
 
-# ── Title CRUD ─────────────────────────────────────────────
+async def get_projects_by_user(db: aiosqlite.Connection, user_id: str) -> list[dict]:
+    """List all projects for a user with all fields."""
+    cursor = await db.execute(
+        "SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,),
+    )
+    return [dict(row) for row in await cursor.fetchall()]
+
+
+async def update_project(db: aiosqlite.Connection, project_id: str, **fields) -> None:
+    """Partial update: only set the provided fields."""
+    if not fields:
+        return
+    allowed = {
+        "topic", "audience", "duration_min", "style", "host_count",
+        "llm_provider", "status", "step", "progress", "cover_index",
+    }
+    invalid = set(fields) - allowed
+    if invalid:
+        raise ValueError(f"Invalid project fields: {invalid}")
+    set_clause = ", ".join(f"{k} = ?" for k in fields)
+    values = list(fields.values())
+    values.append(project_id)
+    await db.execute(
+        f"UPDATE projects SET {set_clause} WHERE project_id = ?",
+        values,
+    )
+
+
+async def delete_project_cascade(db: aiosqlite.Connection, project_id: str) -> None:
+    """Delete a project and all related data (titles, scripts, segments, feedbacks, voice_samples)."""
+    # Get all script_ids for this project
+    cursor = await db.execute(
+        "SELECT script_id FROM scripts WHERE project_id = ?", (project_id,)
+    )
+    script_ids = [row[0] for row in await cursor.fetchall()]
+
+    for script_id in script_ids:
+        # Get segment_ids for this script
+        seg_cursor = await db.execute(
+            "SELECT segment_id FROM script_segments WHERE script_id = ?", (script_id,)
+        )
+        segment_ids = [row[0] for row in await seg_cursor.fetchall()]
+
+        # Delete voice_samples for each segment
+        for segment_id in segment_ids:
+            await db.execute("DELETE FROM voice_samples WHERE segment_id = ?", (segment_id,))
+
+        # Delete segments
+        await db.execute("DELETE FROM script_segments WHERE script_id = ?", (script_id,))
+        # Delete feedbacks
+        await db.execute("DELETE FROM feedbacks WHERE script_id = ?", (script_id,))
+
+    # Delete scripts
+    await db.execute("DELETE FROM scripts WHERE project_id = ?", (project_id,))
+    # Delete titles
+    await db.execute("DELETE FROM titles WHERE project_id = ?", (project_id,))
+    # Delete sessions referencing this project
+    await db.execute("DELETE FROM sessions WHERE project_id = ?", (project_id,))
+    # Delete the project itself
+    await db.execute("DELETE FROM projects WHERE project_id = ?", (project_id,))
+
+
+# -- Title CRUD -------------------------------------------------------------
 
 
 async def create_titles(db: aiosqlite.Connection, project_id: str, titles: list[dict]) -> list[str]:
@@ -240,7 +336,7 @@ async def delete_titles_by_project(db: aiosqlite.Connection, project_id: str) ->
     await db.execute("DELETE FROM titles WHERE project_id = ?", (project_id,))
 
 
-# ── Script CRUD ────────────────────────────────────────────
+# -- Script CRUD ------------------------------------------------------------
 
 
 async def create_script(db: aiosqlite.Connection, project_id: str, version: int = 1) -> str:
@@ -305,7 +401,15 @@ async def get_segment(db: aiosqlite.Connection, segment_id: str) -> dict | None:
     return dict(row) if row else None
 
 
-# ── Feedback CRUD ──────────────────────────────────────────
+async def update_segment(db: aiosqlite.Connection, segment_id: str, content: str) -> None:
+    """Update segment content."""
+    await db.execute(
+        "UPDATE script_segments SET content = ? WHERE segment_id = ?",
+        (content, segment_id),
+    )
+
+
+# -- Feedback CRUD ----------------------------------------------------------
 
 
 async def create_feedback(

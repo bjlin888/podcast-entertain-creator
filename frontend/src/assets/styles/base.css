@@ -1,0 +1,212 @@
+/* ─────────────────────────────────────
+   Reset & Typography & Globals
+───────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: var(--font-body);
+}
+
+input, textarea, select {
+  font-family: var(--font-body);
+}
+
+/* ─── Shared input styles ─── */
+.inp {
+  width: 100%;
+  padding: 15px 18px;
+  border: 2px solid var(--gray-light);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--cream);
+  outline: none;
+  resize: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.inp:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px rgba(244,99,30,.1);
+  background: #fff;
+}
+.inp::placeholder {
+  color: #BDB0A2;
+}
+
+/* ─── Shared card styles ─── */
+.card {
+  background: var(--warm-white);
+  border-radius: var(--radius);
+  padding: 26px;
+  border: 1.5px solid var(--gray-light);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 18px;
+}
+.card-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+  margin-bottom: 12px;
+}
+
+/* ─── Character count ─── */
+.char-count {
+  text-align: right;
+  font-size: 11px;
+  color: var(--gray-mid);
+  margin-top: 5px;
+}
+
+/* ─── Divider ─── */
+.divider {
+  border: none;
+  border-top: 1.5px solid var(--gray-light);
+  margin: 22px 0;
+}
+
+/* ─── Tip box ─── */
+.tip-box {
+  background: var(--gold-pale);
+  border: 1.5px solid #EDD58A;
+  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  font-size: 13px;
+  color: #7A5C00;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+/* ─── Shared button styles ─── */
+.btn-primary {
+  width: 100%;
+  padding: 17px 20px;
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all .2s;
+}
+.btn-primary:hover {
+  background: #FF7A3A;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(244,99,30,.35);
+}
+.btn-primary:disabled {
+  background: var(--gray-light);
+  color: var(--gray-mid);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  padding: 11px 22px;
+  background: transparent;
+  color: var(--orange);
+  border: 2px solid var(--orange);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all .18s;
+}
+.btn-secondary:hover {
+  background: var(--orange-pale);
+  transform: translateY(-1px);
+}
+
+.btn-teal {
+  padding: 11px 22px;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all .18s;
+}
+.btn-teal:hover {
+  background: #14706C;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(26,143,138,.3);
+}
+
+.btn-sm {
+  padding: 7px 14px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  transition: all .18s;
+}
+.bsm-edit {
+  background: var(--gray-pale);
+  color: var(--ink);
+}
+.bsm-edit:hover {
+  background: var(--gray-light);
+}
+.bsm-audio {
+  background: var(--teal-light);
+  color: var(--teal);
+}
+.bsm-audio:hover {
+  background: var(--teal);
+  color: #fff;
+}
+
+/* ─── Containers ─── */
+.dash-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+.flow-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 36px 24px 120px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 640px) {
+  .flow-main,
+  .dash-main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
