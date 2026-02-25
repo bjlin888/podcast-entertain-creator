@@ -10,6 +10,7 @@
 #   GCP_SERVICE    — Cloud Run service name (default: podcast-creator)
 #   CORS_ORIGINS   — Comma-separated allowed origins (auto-detected from Cloud Run URL if empty)
 #   IMAGE_TAG      — Image tag (default: git short SHA or "latest")
+#   GCS_BUCKET     — Cloud Storage bucket for data persistence (default: ${GCP_PROJECT_ID}-podcast-data)
 
 set -euo pipefail
 
@@ -33,12 +34,14 @@ REPO="${GCP_REPO:-podcast-creator}"
 SERVICE="${GCP_SERVICE:-podcast-creator}"
 TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo "latest")}"
 IMAGE="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPO}/${SERVICE}:${TAG}"
+DATA_BUCKET="${GCS_BUCKET:-${GCP_PROJECT_ID}-podcast-data}"
 
 echo "=== Deploying Podcast Creator to Cloud Run ==="
 echo "  Project: ${GCP_PROJECT_ID}"
 echo "  Region:  ${REGION}"
 echo "  Image:   ${IMAGE}"
 echo "  Tag:     ${TAG}"
+echo "  Bucket:  ${DATA_BUCKET}"
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -90,9 +93,12 @@ gcloud run deploy "${SERVICE}" \
   --memory=512Mi \
   --cpu=1 \
   --min-instances=0 \
-  --max-instances=2 \
+  --max-instances=1 \
+  --execution-environment=gen2 \
   --set-secrets="${SECRETS}" \
   --update-env-vars="CORS_ORIGINS=${CORS_ORIGINS}" \
+  --add-volume=name=data-vol,type=cloud-storage,bucket="${DATA_BUCKET}" \
+  --add-volume-mount=volume=data-vol,mount-path=/app/data \
   --quiet
 
 # ---------------------------------------------------------------------------

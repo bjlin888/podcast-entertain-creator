@@ -4,27 +4,32 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA']
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - 'run'
-      - 'deploy'
-      - '${_SERVICE}'
-      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA'
-      - '--region=${_REGION}'
-      - '--platform=managed'
-      - '--allow-unauthenticated'
-      - '--memory=512Mi'
-      - '--cpu=1'
-      - '--min-instances=0'
-      - '--max-instances=2'
-      - '--set-secrets=GEMINI_API_KEY=gemini-api-key:latest,ENCRYPTION_KEY=encryption-key:latest'
-      - '--update-env-vars=CORS_ORIGINS=${_CORS_ORIGINS}'
+      - '-c'
+      - |
+        DATA_BUCKET="${_DATA_BUCKET:-$PROJECT_ID-podcast-data}"
+        gcloud run deploy ${_SERVICE} \
+          --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA \
+          --region=${_REGION} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --memory=512Mi \
+          --cpu=1 \
+          --min-instances=0 \
+          --max-instances=1 \
+          --execution-environment=gen2 \
+          --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,ENCRYPTION_KEY=encryption-key:latest \
+          --update-env-vars=CORS_ORIGINS=${_CORS_ORIGINS} \
+          --add-volume=name=data-vol,type=cloud-storage,bucket=$$DATA_BUCKET \
+          --add-volume-mount=volume=data-vol,mount-path=/app/data
 
 substitutions:
   _REGION: asia-east1
   _REPO: podcast-creator
   _SERVICE: podcast-creator
   _CORS_ORIGINS: https://podcast-creator-HASH.a.run.app
+  _DATA_BUCKET: ''  # Defaults to $PROJECT_ID-podcast-data if empty
 
 images:
   - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$COMMIT_SHA'

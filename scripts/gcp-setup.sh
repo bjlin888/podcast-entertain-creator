@@ -10,6 +10,7 @@
 #   GCP_REPO          — Artifact Registry repo name (default: podcast-creator)
 #   GCP_SERVICE       — Cloud Run service name (default: podcast-creator)
 #   GITHUB_REPO       — GitHub repo name (default: podcast-entertain-creator)
+#   GCS_BUCKET        — Cloud Storage bucket for data (default: ${GCP_PROJECT_ID}-podcast-data)
 
 set -euo pipefail
 
@@ -116,7 +117,19 @@ for role in roles/run.admin roles/secretmanager.secretAccessor roles/iam.service
 done
 
 # ---------------------------------------------------------------------------
-# 5. Ensure GitHub repo exists and code is pushed
+# 5. Create Cloud Storage bucket for data persistence
+# ---------------------------------------------------------------------------
+DATA_BUCKET="${GCS_BUCKET:-${GCP_PROJECT_ID}-podcast-data}"
+echo ">>> Creating Cloud Storage bucket: ${DATA_BUCKET}..."
+if gcloud storage buckets describe "gs://${DATA_BUCKET}" &>/dev/null; then
+  echo "    (already exists, skipping)"
+else
+  gcloud storage buckets create "gs://${DATA_BUCKET}" --location="${REGION}" --uniform-bucket-level-access
+  echo "    Bucket created: gs://${DATA_BUCKET}"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Ensure GitHub repo exists and code is pushed
 # ---------------------------------------------------------------------------
 echo ">>> Checking GitHub repository..."
 
@@ -158,7 +171,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Create Cloud Build trigger (GitHub push to main)
+# 7. Create Cloud Build trigger (GitHub push to main)
 # ---------------------------------------------------------------------------
 echo ">>> Creating Cloud Build trigger..."
 TRIGGER_NAME="${SERVICE}-main"

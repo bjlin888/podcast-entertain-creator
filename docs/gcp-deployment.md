@@ -17,6 +17,7 @@
   - [Step 5：設定 CI/CD 自動部署](#step-5設定-cicd-自動部署)
 - [架構詳解](#架構詳解)
   - [Docker 多階段建置](#docker-多階段建置)
+  - [資料持久化（Cloud Storage FUSE）](#資料持久化cloud-storage-fuse)
   - [Secret Manager 整合](#secret-manager-整合)
   - [IAM 權限說明](#iam-權限說明)
 - [環境變數參考](#環境變數參考)
@@ -36,6 +37,11 @@ Cloud Build ──build──▶ Artifact Registry (Docker image)
     │                         │
     │                         ▼
     └──deploy──▶ Cloud Run ◄── Secret Manager (API keys)
+                    │              │
+                    │              ▼
+                    │         Cloud Storage (FUSE mount → /app/data)
+                    │              ├── podcast.db (SQLite)
+                    │              └── audio/ (TTS 音檔)
                     │
                     ├── /          → Vue 3 SPA (frontend)
                     ├── /api/v1/   → FastAPI REST API
@@ -46,10 +52,11 @@ Cloud Build ──build──▶ Artifact Registry (Docker image)
 
 | 服務 | 用途 |
 |------|------|
-| Cloud Run | 執行 Docker container（serverless） |
+| Cloud Run | 執行 Docker container（serverless, gen2） |
 | Cloud Build | 建置 Docker image（CI/CD） |
 | Artifact Registry | 儲存 Docker image |
 | Secret Manager | 安全儲存 API keys |
+| Cloud Storage | 資料持久化（FUSE mount） |
 
 ---
 
@@ -150,8 +157,9 @@ bash scripts/gcp-setup.sh
 | 2 | 建立 Artifact Registry | Docker image 儲存庫 |
 | 3 | 建立 Secret Manager secrets | `gemini-api-key`, `anthropic-api-key`（選用） |
 | 4 | 設定 IAM 權限 | Compute default SA 取得必要角色 |
-| 5 | 檢查/建立 GitHub repo | 確保程式碼已推送 |
-| 6 | 建立 Cloud Build trigger | push to main 自動部署（需先在 Console 連接 GitHub） |
+| 5 | 建立 Cloud Storage bucket | 資料持久化（SQLite + 音檔） |
+| 6 | 檢查/建立 GitHub repo | 確保程式碼已推送 |
+| 7 | 建立 Cloud Build trigger | push to main 自動部署（需先在 Console 連接 GitHub） |
 
 > **ENCRYPTION_KEY** 需要手動建立（一次性）：
 > ```bash
@@ -172,7 +180,7 @@ bash scripts/gcp-deploy.sh
 
 1. **Cloud Build 建置** — 上傳原始碼到 GCS，在 GCP 上建置 Docker image
 2. **推送到 Artifact Registry** — 儲存建置好的 image
-3. **部署到 Cloud Run** — 建立/更新 service，掛載 secrets 為環境變數
+3. **部署到 Cloud Run** — 建立/更新 service，掛載 secrets + Cloud Storage FUSE volume
 4. **自動偵測 CORS** — 從現有 service URL 取得，設為允許的 origin
 
 整個過程約 1-2 分鐘。
@@ -213,6 +221,29 @@ FROM python:3.13-slim
 ```
 
 最終 image 約 200MB，包含前端 + 後端。
+
+### 資料持久化（Cloud Storage FUSE）
+
+Cloud Run container 是 ephemeral（短暫的），重新部署後本地檔案會重置。為了保留 SQLite 資料庫和 TTS 音檔，使用 Cloud Storage FUSE 將 GCS bucket 掛載到 `/app/data`。
+
+```
+Cloud Run container
+  └── /app/data  ←── Cloud Storage FUSE mount
+        ├── podcast.db     (SQLite 資料庫)
+        └── audio/         (TTS 音檔)
+```
+
+**關鍵配置：**
+
+| 設定 | 值 | 原因 |
+|------|-----|------|
+| `max-instances` | `1` | SQLite 不支援多 writer，限制單一 instance |
+| `execution-environment` | `gen2` | FUSE mount 需要第二代執行環境 |
+| `journal_mode` | `DELETE` | FUSE 不支援 shared memory（WAL 模式需要） |
+| `busy_timeout` | `5000` ms | 處理短暫的 lock contention |
+| `synchronous` | `NORMAL` | 平衡寫入效能與資料安全 |
+
+> 詳細說明見 [docs/data-persistence.md](data-persistence.md)
 
 ### Secret Manager 整合
 
@@ -255,6 +286,7 @@ Compute default SA（Cloud Build 和 Cloud Run 共用）需要的角色：
 | `GCP_REPO` | No | `podcast-creator` | Artifact Registry repo 名稱 |
 | `GCP_SERVICE` | No | `podcast-creator` | Cloud Run service 名稱 |
 | `GITHUB_REPO` | No | `podcast-entertain-creator` | GitHub repo 名稱 |
+| `GCS_BUCKET` | No | `${GCP_PROJECT_ID}-podcast-data` | Cloud Storage bucket 名稱 |
 
 ### gcp-deploy.sh
 
@@ -266,6 +298,7 @@ Compute default SA（Cloud Build 和 Cloud Run 共用）需要的角色：
 | `GCP_SERVICE` | No | `podcast-creator` | Cloud Run service 名稱 |
 | `CORS_ORIGINS` | No | 自動偵測 | 允許的 CORS origins（逗號分隔） |
 | `IMAGE_TAG` | No | git short SHA | Docker image tag |
+| `GCS_BUCKET` | No | `${GCP_PROJECT_ID}-podcast-data` | Cloud Storage bucket 名稱 |
 
 ### 應用程式環境變數（Cloud Run runtime）
 
@@ -338,12 +371,12 @@ gcloud artifacts repositories delete podcast-creator --location=asia-east1
 | Cloud Build | 120 build-min/天 | 每次建置約 1 分鐘 |
 | Artifact Registry | 500MB | 單一 image 約 200MB |
 | Secret Manager | 6 active secrets, 10K access | 3 secrets |
-| Cloud Storage | 5GB（限 US region） | 建置暫存用 |
+| Cloud Storage | 5GB（限 US region） | 資料持久化 + 建置暫存 |
 
 **注意事項：**
 - Cloud Run `min-instances=0` 表示無流量時不計費（冷啟動約 3-5 秒）
-- `max-instances=2` 限制最大並行數，避免意外費用
-- Cloud Storage 免費額度僅限 US region，建置暫存在 asia-east1 會有少量費用
+- `max-instances=1` 限制單一 instance（SQLite 單 writer 限制）
+- Cloud Storage 免費額度僅限 US region，asia-east1 的 bucket 會有少量費用（個人使用量極低）
 
 ---
 
@@ -408,17 +441,25 @@ bash scripts/gcp-deploy.sh
 
 ### 問題：資料遺失（重新部署後）
 
-Cloud Run 是 ephemeral container，SQLite 資料庫在重新部署後會重置。
+**已解決：** 專案已整合 Cloud Storage FUSE，`/app/data` 目錄（包含 SQLite 和音檔）會自動掛載到 GCS bucket。
 
-**解決方案：** 掛載 Cloud Storage FUSE：
+如果仍遇到資料遺失，確認：
+1. GCS bucket 存在：`gcloud storage buckets describe gs://${GCP_PROJECT_ID}-podcast-data`
+2. 部署指令包含 `--add-volume` 和 `--add-volume-mount`（`gcp-deploy.sh` 已自動處理）
+3. `max-instances=1`（SQLite 不支援多 writer）
+
+### 問題：Cloud Storage FUSE mount 失敗
+
+```
+Volume mount failed: failed to mount volume "data-vol"
+```
+
+**解決方案：** 確認 Compute default SA 有 `storage.objectAdmin` 角色，且 bucket 存在：
 
 ```bash
-# 建立 bucket
-gsutil mb -l asia-east1 gs://my-podcast-data
+# 確認 bucket 存在
+gcloud storage buckets describe gs://${GCP_PROJECT_ID}-podcast-data
 
-# 部署時掛載
-gcloud run deploy podcast-creator \
-  --add-volume=name=data-vol,type=cloud-storage,bucket=my-podcast-data \
-  --add-volume-mount=volume=data-vol,mount-path=/app/data \
-  --region=asia-east1
+# 如果不存在，建立
+gcloud storage buckets create gs://${GCP_PROJECT_ID}-podcast-data --location=asia-east1
 ```

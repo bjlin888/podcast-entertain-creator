@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
@@ -144,6 +145,13 @@ async def get_db():
     db = await aiosqlite.connect(_db_path)
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys=ON")
+    await db.execute("PRAGMA busy_timeout=5000")
+    await db.execute("PRAGMA synchronous=NORMAL")
+    # Cloud Run sets K_SERVICE; FUSE mount doesn't support WAL's shared memory
+    if os.environ.get("K_SERVICE"):
+        await db.execute("PRAGMA journal_mode=DELETE")
+    else:
+        await db.execute("PRAGMA journal_mode=WAL")
     try:
         yield db
         await db.commit()
