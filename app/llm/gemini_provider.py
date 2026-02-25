@@ -38,6 +38,8 @@ class GeminiProvider(LLMProvider):
                     getattr(usage, "prompt_token_count", "?"),
                     getattr(usage, "candidates_token_count", "?"),
                 )
+                if not response.text:
+                    raise LLMError("Gemini returned empty response")
                 return json.loads(response.text)
             except json.JSONDecodeError as e:
                 last_err = LLMError(f"Gemini returned invalid JSON: {e}")

@@ -21,7 +21,7 @@ GEMINI_VOICES = {
     "male": "Achird",
 }
 
-_VOICE_DIRECTION = "用自然的台灣華語播客主持人風格朗讀以下內容：\n\n"
+_VOICE_DIRECTION = "Read the following content in a natural Taiwanese Mandarin podcast host style:\n\n"
 
 
 class GeminiTTSProvider(TTSProvider):
@@ -42,12 +42,12 @@ class GeminiTTSProvider(TTSProvider):
 
         # Extract tone cues and merge into style prompt
         processed, cue_hint = extract_tone_cues(processed)
-        merged_style = "、".join(filter(None, [style_prompt, cue_hint]))
+        merged_style = ", ".join(filter(None, [style_prompt, cue_hint]))
 
         # Gemini TTS does not support system_instruction — prepend direction to content
         prompt = _VOICE_DIRECTION
         if merged_style:
-            prompt += f"風格：{merged_style}\n\n"
+            prompt += f"Style: {merged_style}\n\n"
         prompt += processed
 
         try:

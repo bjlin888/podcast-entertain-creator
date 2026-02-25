@@ -216,7 +216,7 @@ def test_extract_tone_cues_max_three():
     text = "(語氣一)(語氣二)(語氣三)(語氣四)內容"
     cleaned, hint = extract_tone_cues(text)
     # Only first 3 cues in hint
-    parts = hint.split("、")
+    parts = hint.split(", ")
     assert len(parts) == 3
 
 

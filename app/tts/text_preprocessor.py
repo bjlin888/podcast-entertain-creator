@@ -31,5 +31,5 @@ def extract_tone_cues(text: str) -> tuple[str, str]:
     """
     cues = _CUE_PATTERN.findall(text)
     cleaned = _CUE_PATTERN.sub("", text)
-    style_hint = "、".join(c.strip("()（）") for c in cues[:3]) if cues else ""
+    style_hint = ", ".join(c.strip("()（）") for c in cues[:3]) if cues else ""
     return cleaned.strip(), style_hint

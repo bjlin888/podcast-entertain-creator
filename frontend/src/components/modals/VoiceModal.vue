@@ -31,31 +31,29 @@
           <div class="multi-speaker-config">
             <div class="speaker-row">
               <span class="speaker-label">主持人A</span>
-              <div class="opt-grid speaker-grid">
+              <div class="voice-grid">
                 <button
                   v-for="v in geminiVoices"
                   :key="'a-' + v.value"
-                  class="opt-btn"
+                  class="voice-chip"
                   :class="{ sel: config.speakers[0].voice === v.value }"
                   @click="config.speakers[0].voice = v.value"
                 >
-                  <span class="oi">{{ v.icon }}</span>
-                  <span>{{ v.label }}</span>
+                  {{ v.label }}
                 </button>
               </div>
             </div>
             <div class="speaker-row">
               <span class="speaker-label">主持人B</span>
-              <div class="opt-grid speaker-grid">
+              <div class="voice-grid">
                 <button
                   v-for="v in geminiVoices"
                   :key="'b-' + v.value"
-                  class="opt-btn"
+                  class="voice-chip"
                   :class="{ sel: config.speakers[1].voice === v.value }"
                   @click="config.speakers[1].voice = v.value"
                 >
-                  <span class="oi">{{ v.icon }}</span>
-                  <span>{{ v.label }}</span>
+                  {{ v.label }}
                 </button>
               </div>
             </div>
@@ -65,7 +63,20 @@
         <!-- Single speaker voice selection -->
         <template v-else>
           <div class="card-label">聲音</div>
-          <div class="opt-grid">
+          <!-- Gemini: full 30-voice grid -->
+          <div v-if="config.ttsProvider === 'gemini'" class="voice-grid">
+            <button
+              v-for="v in geminiVoices"
+              :key="v.value"
+              class="voice-chip"
+              :class="{ sel: config.voice === v.value }"
+              @click="config.voice = v.value"
+            >
+              {{ v.label }}
+            </button>
+          </div>
+          <!-- Google Cloud TTS: female/male -->
+          <div v-else class="opt-grid">
             <button
               v-for="v in voices"
               :key="v.value"
@@ -154,7 +165,7 @@ const emit = defineEmits(['close', 'generate', 'generate-multi'])
 const isMultiSpeaker = computed(() => props.hostCount >= 2)
 
 const config = reactive({
-  voice: 'female',
+  voice: 'Kore',
   speed: 'normal',
   pitch: 'normal',
   ttsProvider: 'gemini',
@@ -170,10 +181,36 @@ const voices = [
   { value: 'male', icon: '👨', label: '男聲' },
 ]
 const geminiVoices = [
-  { value: 'Achird', icon: '👨', label: '男聲 (Achird)' },
-  { value: 'Kore', icon: '👩', label: '女聲 (Kore)' },
-  { value: 'Charon', icon: '🧔', label: '男聲 (Charon)' },
-  { value: 'Fenrir', icon: '👩‍🦰', label: '女聲 (Fenrir)' },
+  { value: 'Zephyr', label: 'Zephyr（明亮）' },
+  { value: 'Puck', label: 'Puck（歡快）' },
+  { value: 'Charon', label: 'Charon（知性）' },
+  { value: 'Kore', label: 'Kore（沉穩）' },
+  { value: 'Fenrir', label: 'Fenrir（興奮）' },
+  { value: 'Leda', label: 'Leda（青春）' },
+  { value: 'Orus', label: 'Orus（堅定）' },
+  { value: 'Aoede', label: 'Aoede（甜美）' },
+  { value: 'Callirrhoe', label: 'Callirrhoe（悠閒）' },
+  { value: 'Autonoe', label: 'Autonoe（明亮）' },
+  { value: 'Enceladus', label: 'Enceladus（微風）' },
+  { value: 'Iapetus', label: 'Iapetus（清澈）' },
+  { value: 'Umbriel', label: 'Umbriel（自在）' },
+  { value: 'Algieba', label: 'Algieba（平穩）' },
+  { value: 'Despina', label: 'Despina（柔和）' },
+  { value: 'Erinome', label: 'Erinome（清新）' },
+  { value: 'Gacrux', label: 'Gacrux（成熟）' },
+  { value: 'Achird', label: 'Achird（友善）' },
+  { value: 'Zubenelgenubi', label: 'Zubenelgenubi（沈著）' },
+  { value: 'Pulcherrima', label: 'Pulcherrima（前進）' },
+  { value: 'Vindemiatrix', label: 'Vindemiatrix（溫柔）' },
+  { value: 'Sadachbia', label: 'Sadachbia（活潑）' },
+  { value: 'Sadaltager', label: 'Sadaltager（博學）' },
+  { value: 'Sulafat', label: 'Sulafat（溫暖）' },
+  { value: 'Laomedeia', label: 'Laomedeia（上揚）' },
+  { value: 'Achernar', label: 'Achernar（輕柔）' },
+  { value: 'Rasalgethi', label: 'Rasalgethi（知性）' },
+  { value: 'Schedar', label: 'Schedar（均衡）' },
+  { value: 'Rasalhague', label: 'Rasalhague（輕快）' },
+  { value: 'Algorab', label: 'Algorab（謹慎）' },
 ]
 const speeds = [
   { value: 'slow', icon: '🐢', label: '慢速' },
@@ -187,9 +224,9 @@ const pitches = [
 ]
 const stylePresets = [
   { value: '', icon: '🎙️', label: '自然' },
-  { value: '用輕鬆閒聊的語氣，像朋友之間的對話', icon: '☕', label: '輕鬆聊天' },
-  { value: '用專業知識分享的語氣，清晰有條理', icon: '📚', label: '專業知識' },
-  { value: '用熱情有活力的語氣，充滿感染力', icon: '🔥', label: '熱情活力' },
+  { value: 'Casual and friendly tone, like a conversation between friends', icon: '☕', label: '輕鬆聊天' },
+  { value: 'Professional and knowledgeable tone, clear and well-structured', icon: '📚', label: '專業知識' },
+  { value: 'Enthusiastic and energetic tone, full of passion', icon: '🔥', label: '熱情活力' },
 ]
 
 function handleGenerate() {
@@ -271,7 +308,34 @@ function handleGenerateMulti() {
   font-weight: 700;
   color: var(--gray-dark, #333);
 }
-.speaker-grid {
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+.voice-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.voice-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1.5px solid var(--gray-light, #e0e0e0);
+  background: var(--warm-white, #fff);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.voice-chip:hover {
+  border-color: var(--accent, #6c5ce7);
+  background: rgba(108, 92, 231, 0.05);
+}
+.voice-chip.sel {
+  border-color: var(--accent, #6c5ce7);
+  background: var(--accent, #6c5ce7);
+  color: #fff;
+  font-weight: 600;
 }
 </style>
