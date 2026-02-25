@@ -74,6 +74,14 @@ if [[ -z "${CORS_ORIGINS:-}" ]]; then
   fi
 fi
 
+# Build secrets flag — Anthropic key is optional
+SECRETS="GEMINI_API_KEY=gemini-api-key:latest"
+if gcloud secrets describe anthropic-api-key &>/dev/null; then
+  SECRETS="${SECRETS},ANTHROPIC_API_KEY=anthropic-api-key:latest"
+else
+  echo "    Note: anthropic-api-key secret not found, skipping"
+fi
+
 gcloud run deploy "${SERVICE}" \
   --image="${IMAGE}" \
   --region="${REGION}" \
@@ -83,7 +91,7 @@ gcloud run deploy "${SERVICE}" \
   --cpu=1 \
   --min-instances=0 \
   --max-instances=2 \
-  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest,ANTHROPIC_API_KEY=anthropic-api-key:latest" \
+  --set-secrets="${SECRETS}" \
   --update-env-vars="CORS_ORIGINS=${CORS_ORIGINS}" \
   --quiet
 

@@ -3,9 +3,9 @@
 # Required env vars:
 #   GCP_PROJECT_ID    — GCP project ID
 #   GEMINI_API_KEY    — Gemini API key (stored in Secret Manager)
-#   ANTHROPIC_API_KEY — Anthropic API key (stored in Secret Manager)
 #   GITHUB_OWNER      — GitHub username/org owning the repo
 # Optional env vars:
+#   ANTHROPIC_API_KEY — Anthropic API key (stored in Secret Manager)
 #   GCP_REGION        — Region (default: asia-east1)
 #   GCP_REPO          — Artifact Registry repo name (default: podcast-creator)
 #   GCP_SERVICE       — Cloud Run service name (default: podcast-creator)
@@ -17,7 +17,7 @@ set -euo pipefail
 # Validate required env vars
 # ---------------------------------------------------------------------------
 missing=()
-for var in GCP_PROJECT_ID GEMINI_API_KEY ANTHROPIC_API_KEY GITHUB_OWNER; do
+for var in GCP_PROJECT_ID GEMINI_API_KEY GITHUB_OWNER; do
   if [[ -z "${!var:-}" ]]; then
     missing+=("$var")
   fi
@@ -28,8 +28,8 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   echo "Usage:" >&2
   echo "  export GCP_PROJECT_ID=my-project" >&2
   echo "  export GEMINI_API_KEY=AIza..." >&2
-  echo "  export ANTHROPIC_API_KEY=sk-ant-..." >&2
   echo "  export GITHUB_OWNER=myuser" >&2
+  echo "  export ANTHROPIC_API_KEY=sk-ant-...  # optional" >&2
   echo "  bash scripts/gcp-setup.sh" >&2
   exit 1
 fi
@@ -91,7 +91,12 @@ create_or_update_secret() {
 }
 
 create_or_update_secret "gemini-api-key" "${GEMINI_API_KEY}"
-create_or_update_secret "anthropic-api-key" "${ANTHROPIC_API_KEY}"
+
+if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+  create_or_update_secret "anthropic-api-key" "${ANTHROPIC_API_KEY}"
+else
+  echo "    Skipping anthropic-api-key (ANTHROPIC_API_KEY not set)"
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Grant IAM roles to Cloud Build service account
